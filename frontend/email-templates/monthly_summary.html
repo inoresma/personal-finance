@@ -1,0 +1,166 @@
+<!--
+Template ID: monthly_summary
+Variables disponibles:
+- {{to_name}} - Nombre del usuario
+- {{to_email}} - Email del usuario
+- {{month}} - Nombre del mes (ej: "Noviembre")
+- {{year}} - Año
+- {{total_income}} - Ingresos totales formateados
+- {{total_expenses}} - Gastos totales formateados
+- {{balance}} - Balance (ingresos - gastos) formateado
+- {{balance_positive}} - true/false si el balance es positivo
+- {{top_categories}} - Lista de categorías principales
+- {{total_transactions}} - Número de transacciones
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resumen Mensual</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
+                💰 Finanzas Personales
+              </h1>
+              <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
+                Resumen de {{month}} {{year}}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 24px; color: #334155; font-size: 16px; line-height: 1.6;">
+                Hola <strong>{{to_name}}</strong>,
+              </p>
+              
+              <p style="margin: 0 0 32px; color: #334155; font-size: 16px; line-height: 1.6;">
+                Aquí está el resumen de tus finanzas del mes de <strong>{{month}}</strong>:
+              </p>
+              
+              <!-- Stats Cards -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 32px;">
+                <tr>
+                  <!-- Income Card -->
+                  <td style="width: 50%; padding-right: 8px;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #ecfdf5; border-radius: 12px;">
+                      <tr>
+                        <td style="padding: 20px; text-align: center;">
+                          <p style="margin: 0 0 8px; color: #059669; font-size: 14px; font-weight: 600;">
+                            📈 Ingresos
+                          </p>
+                          <p style="margin: 0; color: #047857; font-size: 24px; font-weight: 700;">
+                            {{total_income}}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  
+                  <!-- Expenses Card -->
+                  <td style="width: 50%; padding-left: 8px;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #fef2f2; border-radius: 12px;">
+                      <tr>
+                        <td style="padding: 20px; text-align: center;">
+                          <p style="margin: 0 0 8px; color: #dc2626; font-size: 14px; font-weight: 600;">
+                            📉 Gastos
+                          </p>
+                          <p style="margin: 0; color: #b91c1c; font-size: 24px; font-weight: 700;">
+                            {{total_expenses}}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Balance Card -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 32px;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 12px; padding: 24px; text-align: center;">
+                    <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.9); font-size: 14px; font-weight: 600;">
+                      💫 Balance del mes
+                    </p>
+                    <p style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700;">
+                      {{balance}}
+                    </p>
+                    <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.8); font-size: 14px;">
+                      {{total_transactions}} transacciones realizadas
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Top Categories -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 32px; background-color: #f8fafc; border-radius: 12px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 16px; color: #334155; font-size: 16px; font-weight: 600;">
+                      🏷️ Principales categorías de gasto
+                    </p>
+                    <p style="margin: 0; color: #64748b; font-size: 14px; line-height: 1.8;">
+                      {{top_categories}}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Tips Section -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 32px;">
+                <tr>
+                  <td style="background-color: #fef3c7; border-radius: 12px; padding: 20px;">
+                    <p style="margin: 0 0 8px; color: #92400e; font-size: 14px; font-weight: 600;">
+                      💡 Consejo del mes
+                    </p>
+                    <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.6;">
+                      Revisa tus gastos hormiga - esos pequeños gastos diarios que parecen insignificantes pero suman al final del mes. ¡Identifícalos y establece límites!
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center">
+                    <a href="#" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                      Ver reportes completos
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 8px; color: #64748b; font-size: 13px;">
+                Este correo fue enviado desde tu aplicación de Finanzas Personales
+              </p>
+              <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+                Si no deseas recibir más resúmenes, puedes desactivarlos en la configuración de tu perfil.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+
+

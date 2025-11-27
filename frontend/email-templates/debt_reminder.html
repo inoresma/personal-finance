@@ -1,0 +1,154 @@
+<!--
+Template ID: debt_reminder
+Variables disponibles:
+- {{to_name}} - Nombre del usuario
+- {{to_email}} - Email del usuario
+- {{debt_name}} - Nombre de la deuda
+- {{amount}} - Monto restante formateado
+- {{due_date}} - Fecha de vencimiento
+- {{days_remaining}} - Días restantes
+- {{debt_type}} - "debes" o "te deben"
+- {{creditor_debtor}} - Nombre del acreedor/deudor
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recordatorio de Deuda</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
+                💰 Finanzas Personales
+              </h1>
+              <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
+                Recordatorio de deuda próxima
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 24px; color: #334155; font-size: 16px; line-height: 1.6;">
+                Hola <strong>{{to_name}}</strong>,
+              </p>
+              
+              <p style="margin: 0 0 24px; color: #334155; font-size: 16px; line-height: 1.6;">
+                Te recordamos que tienes una deuda próxima a vencer:
+              </p>
+              
+              <!-- Alert Box -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tr>
+                  <td style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 12px 12px 0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td>
+                          <p style="margin: 0 0 4px; color: #92400e; font-size: 14px; font-weight: 600;">
+                            ⚠️ Vence en {{days_remaining}} día(s)
+                          </p>
+                          <h2 style="margin: 0; color: #78350f; font-size: 20px; font-weight: 700;">
+                            {{debt_name}}
+                          </h2>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Details -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 32px; background-color: #f8fafc; border-radius: 12px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Tipo:</td>
+                        <td style="color: #334155; font-size: 14px; font-weight: 600; text-align: right; text-transform: capitalize;">
+                          {{debt_type}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Monto pendiente:</td>
+                        <td style="color: #dc2626; font-size: 18px; font-weight: 700; text-align: right;">
+                          {{amount}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Fecha de vencimiento:</td>
+                        <td style="color: #334155; font-size: 14px; font-weight: 600; text-align: right;">
+                          {{due_date}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Acreedor/Deudor:</td>
+                        <td style="color: #334155; font-size: 14px; font-weight: 600; text-align: right;">
+                          {{creditor_debtor}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center">
+                    <a href="#" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                      Ver en la aplicación
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 8px; color: #64748b; font-size: 13px;">
+                Este correo fue enviado desde tu aplicación de Finanzas Personales
+              </p>
+              <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+                Si no deseas recibir más recordatorios, puedes desactivarlos en la configuración de tu perfil.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+
+

@@ -1,0 +1,187 @@
+<!--
+Template ID: budget_alert
+Variables disponibles:
+- {{to_name}} - Nombre del usuario
+- {{to_email}} - Email del usuario
+- {{category}} - Nombre de la categoría
+- {{budget_amount}} - Monto del presupuesto formateado
+- {{spent}} - Monto gastado formateado
+- {{remaining}} - Monto restante formateado
+- {{percentage}} - Porcentaje usado
+- {{alert_type}} - "exceeded" o "low"
+- {{alert_message}} - Mensaje de alerta
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerta de Presupuesto</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
+                💰 Finanzas Personales
+              </h1>
+              <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
+                Alerta de presupuesto
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 24px; color: #334155; font-size: 16px; line-height: 1.6;">
+                Hola <strong>{{to_name}}</strong>,
+              </p>
+              
+              <p style="margin: 0 0 24px; color: #334155; font-size: 16px; line-height: 1.6;">
+                {{alert_message}}
+              </p>
+              
+              <!-- Alert Box -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tr>
+                  <td style="background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 20px; border-radius: 0 12px 12px 0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td>
+                          <p style="margin: 0 0 4px; color: #991b1b; font-size: 14px; font-weight: 600;">
+                            📊 Presupuesto al {{percentage}}%
+                          </p>
+                          <h2 style="margin: 0; color: #7f1d1d; font-size: 20px; font-weight: 700;">
+                            {{category}}
+                          </h2>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Progress Bar -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 20px; background-color: #f8fafc; border-radius: 12px;">
+                    <p style="margin: 0 0 12px; color: #64748b; font-size: 14px;">
+                      Progreso del presupuesto
+                    </p>
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="background-color: #e2e8f0; border-radius: 999px; overflow: hidden; height: 12px;">
+                          <table role="presentation" style="width: {{percentage}}%; max-width: 100%; border-collapse: collapse;">
+                            <tr>
+                              <td style="background: linear-gradient(90deg, #ef4444 0%, #f97316 100%); height: 12px; border-radius: 999px;"></td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                    <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 13px;">Gastado</td>
+                        <td style="color: #64748b; font-size: 13px; text-align: right;">Presupuesto</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #ef4444; font-size: 16px; font-weight: 700;">{{spent}}</td>
+                        <td style="color: #334155; font-size: 16px; font-weight: 700; text-align: right;">{{budget_amount}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Details -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 32px; background-color: #f8fafc; border-radius: 12px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Categoría:</td>
+                        <td style="color: #334155; font-size: 14px; font-weight: 600; text-align: right;">
+                          {{category}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Presupuesto mensual:</td>
+                        <td style="color: #334155; font-size: 14px; font-weight: 600; text-align: right;">
+                          {{budget_amount}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Gastado:</td>
+                        <td style="color: #ef4444; font-size: 14px; font-weight: 600; text-align: right;">
+                          {{spent}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px;">
+                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="color: #64748b; font-size: 14px;">Disponible:</td>
+                        <td style="color: #10b981; font-size: 14px; font-weight: 600; text-align: right;">
+                          {{remaining}}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center">
+                    <a href="#" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                      Ver mis presupuestos
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 8px; color: #64748b; font-size: 13px;">
+                Este correo fue enviado desde tu aplicación de Finanzas Personales
+              </p>
+              <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+                Si no deseas recibir más alertas, puedes desactivarlas en la configuración de tu perfil.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+
+
