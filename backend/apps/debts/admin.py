@@ -18,3 +18,4 @@ class DebtPaymentAdmin(admin.ModelAdmin):
 
 
 
+

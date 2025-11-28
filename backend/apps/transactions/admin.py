@@ -19,3 +19,4 @@ class RecurringTransactionAdmin(admin.ModelAdmin):
 
 
 
+
