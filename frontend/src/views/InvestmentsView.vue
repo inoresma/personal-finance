@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/ui'
 import api from '@/services/api'
 import { formatMoney } from '@/composables/useCurrency'
 import Modal from '@/components/Modal.vue'
+import DateInput from '@/components/DateInput.vue'
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -311,7 +312,7 @@ onMounted(fetchData)
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="label">Fecha inicio</label>
-            <input v-model="form.start_date" type="date" class="input" />
+            <DateInput v-model="form.start_date" />
           </div>
           <div>
             <label class="label">Rentabilidad esperada (%)</label>

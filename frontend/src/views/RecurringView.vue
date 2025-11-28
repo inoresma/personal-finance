@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui'
 import api from '@/services/api'
 import { formatMoney, formatDate as formatDateUtil } from '@/composables/useCurrency'
 import Modal from '@/components/Modal.vue'
+import DateInput from '@/components/DateInput.vue'
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -349,11 +350,11 @@ onMounted(async () => {
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="label">Primera ejecución</label>
-            <input v-model="form.next_execution" type="date" class="input" />
+            <DateInput v-model="form.next_execution" />
           </div>
           <div>
             <label class="label">Fecha fin (opcional)</label>
-            <input v-model="form.end_date" type="date" class="input" />
+            <DateInput v-model="form.end_date" />
           </div>
         </div>
       </form>

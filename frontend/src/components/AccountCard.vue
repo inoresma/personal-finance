@@ -17,7 +17,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits(['edit', 'delete', 'detail'])
 
 const accountIcons = {
   efectivo: BanknotesIcon,
@@ -37,7 +37,10 @@ function formatCurrency(value) {
 </script>
 
 <template>
-  <div class="card p-5 hover:shadow-md transition-shadow group">
+  <div 
+    @click="emit('detail', account)"
+    class="card p-5 hover:shadow-md transition-shadow group cursor-pointer"
+  >
     <div class="flex items-start justify-between">
       <div class="flex items-center gap-3">
         <div 
@@ -58,13 +61,13 @@ function formatCurrency(value) {
       
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          @click="emit('edit', account)"
+          @click.stop="emit('edit', account)"
           class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
         >
           <PencilIcon class="w-4 h-4" />
         </button>
         <button
-          @click="emit('delete', account)"
+          @click.stop="emit('delete', account)"
           class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
         >
           <TrashIcon class="w-4 h-4" />

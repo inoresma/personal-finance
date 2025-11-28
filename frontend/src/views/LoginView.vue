@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -14,11 +14,36 @@ const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
+const rememberMe = ref(false)
+
+const REMEMBERED_EMAIL_KEY = 'remembered_email'
+
+onMounted(() => {
+  const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY)
+  if (rememberedEmail) {
+    email.value = rememberedEmail
+    rememberMe.value = true
+  }
+})
+
+function handleRememberMeChange() {
+  if (rememberMe.value) {
+    localStorage.setItem(REMEMBERED_EMAIL_KEY, email.value)
+  } else {
+    localStorage.removeItem(REMEMBERED_EMAIL_KEY)
+  }
+}
 
 async function handleSubmit() {
   if (!email.value || !password.value) {
     error.value = 'Por favor completa todos los campos'
     return
+  }
+  
+  if (rememberMe.value) {
+    localStorage.setItem(REMEMBERED_EMAIL_KEY, email.value)
+  } else {
+    localStorage.removeItem(REMEMBERED_EMAIL_KEY)
   }
   
   loading.value = true
@@ -92,6 +117,19 @@ async function handleSubmit() {
             </div>
           </div>
           
+          <div class="flex items-center">
+            <input
+              id="remember-me"
+              v-model="rememberMe"
+              type="checkbox"
+              @change="handleRememberMeChange"
+              class="w-4 h-4 text-primary-600 bg-slate-100 border-slate-300 rounded focus:ring-primary-500 focus:ring-2 dark:bg-slate-700 dark:border-slate-600"
+            />
+            <label for="remember-me" class="ml-2 text-sm text-slate-600 dark:text-slate-400">
+              Mantener sesión iniciada
+            </label>
+          </div>
+          
           <button
             type="submit"
             :disabled="loading"
@@ -124,11 +162,19 @@ async function handleSubmit() {
           
           <div class="mt-12 grid grid-cols-2 gap-6 max-w-sm mx-auto">
             <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-              <div class="text-3xl font-bold">100%</div>
-              <div class="text-primary-200 text-sm">Gratis</div>
+              <div class="text-3xl font-bold mb-1">📊</div>
+              <div class="text-primary-200 text-sm">Reportes</div>
             </div>
             <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-              <div class="text-3xl font-bold">∞</div>
+              <div class="text-3xl font-bold mb-1">💰</div>
+              <div class="text-primary-200 text-sm">Presupuestos</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
+              <div class="text-3xl font-bold mb-1">📈</div>
+              <div class="text-primary-200 text-sm">Inversiones</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
+              <div class="text-3xl font-bold mb-1">∞</div>
               <div class="text-primary-200 text-sm">Transacciones</div>
             </div>
           </div>

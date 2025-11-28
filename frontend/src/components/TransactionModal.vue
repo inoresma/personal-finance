@@ -6,6 +6,7 @@ import { useTransactionsStore } from '@/stores/transactions'
 import { useUiStore } from '@/stores/ui'
 import { formatMoney } from '@/composables/useCurrency'
 import Modal from './Modal.vue'
+import DateInput from './DateInput.vue'
 import { BugAntIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -309,11 +310,7 @@ onMounted(async () => {
       <!-- Date -->
       <div>
         <label class="label">Fecha</label>
-        <input
-          v-model="form.date"
-          type="date"
-          class="input"
-        />
+        <DateInput v-model="form.date" />
       </div>
       
       <!-- Notes -->

@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/ui'
 import api from '@/services/api'
 import { formatMoney, formatDate } from '@/composables/useCurrency'
 import Modal from '@/components/Modal.vue'
+import DateInput from '@/components/DateInput.vue'
 import { PlusIcon, PencilIcon, TrashIcon, ScaleIcon, BanknotesIcon, EyeIcon, CalendarIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 
 const uiStore = useUiStore()
@@ -411,11 +412,11 @@ onMounted(fetchData)
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="label">Fecha inicio</label>
-            <input v-model="form.start_date" type="date" class="input" />
+            <DateInput v-model="form.start_date" />
           </div>
           <div>
             <label class="label">Fecha vencimiento</label>
-            <input v-model="form.due_date" type="date" class="input" />
+            <DateInput v-model="form.due_date" />
           </div>
         </div>
         
@@ -452,7 +453,7 @@ onMounted(fetchData)
         
         <div>
           <label class="label">Fecha del pago</label>
-          <input v-model="paymentForm.payment_date" type="date" class="input" />
+          <DateInput v-model="paymentForm.payment_date" />
         </div>
         
         <div>

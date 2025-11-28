@@ -3,9 +3,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import Account
 from .serializers import AccountSerializer, AccountBalanceUpdateSerializer
+from apps.transactions.models import Transaction
+from apps.transactions.serializers import TransactionListSerializer
 
 
 class AccountViewSet(viewsets.ModelViewSet):
@@ -35,6 +40,47 @@ class AccountViewSet(viewsets.ModelViewSet):
             'total_balance': total,
             'accounts_count': accounts.count()
         })
+    
+    @action(detail=True, methods=['get'])
+    def details(self, request, pk=None):
+        account = self.get_object()
+        today = timezone.now().date()
+        month_start = today.replace(day=1)
+        
+        transactions = Transaction.objects.filter(
+            account=account,
+            date__gte=month_start,
+            date__lte=today
+        )
+        
+        income = transactions.filter(transaction_type='ingreso').aggregate(total=Sum('amount'))['total'] or 0
+        expenses = transactions.filter(transaction_type='gasto').aggregate(total=Sum('amount'))['total'] or 0
+        transfers_out = transactions.filter(transaction_type='transferencia').aggregate(total=Sum('amount'))['total'] or 0
+        
+        transfers_in = Transaction.objects.filter(
+            destination_account=account,
+            date__gte=month_start,
+            date__lte=today,
+            transaction_type='transferencia'
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        recent_transactions = Transaction.objects.filter(
+            account=account
+        ).select_related('category', 'destination_account').order_by('-date', '-created_at')[:20]
+        
+        serializer = TransactionListSerializer(recent_transactions, many=True)
+        
+        return Response({
+            'account': AccountSerializer(account).data,
+            'summary': {
+                'income': float(income),
+                'expenses': float(expenses),
+                'transfers_out': float(transfers_out),
+                'transfers_in': float(transfers_in),
+            },
+            'transactions': serializer.data
+        })
+
 
 
 

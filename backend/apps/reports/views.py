@@ -57,6 +57,24 @@ class DashboardView(APIView):
             transaction_type='gasto'
         ).aggregate(total=Sum('amount'))['total'] or 0
         
+        ant_expenses = month_transactions.filter(
+            transaction_type='gasto',
+            is_ant_expense=True
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        normal_expenses = month_transactions.filter(
+            transaction_type='gasto',
+            is_ant_expense=False
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        expenses_by_account = month_transactions.filter(
+            transaction_type='gasto'
+        ).select_related('account').values(
+            'account__id', 'account__name', 'account__color'
+        ).annotate(
+            total=Sum('amount')
+        ).order_by('-total')
+        
         expenses_by_category = month_transactions.filter(
             transaction_type='gasto',
             category__isnull=False
@@ -127,7 +145,13 @@ class DashboardView(APIView):
             'budget_alerts': budget_alerts,
             'investments_total': investments_total,
             'debts_remaining': debts_remaining,
-            'account_stats': account_stats
+            'account_stats': account_stats,
+            'ant_expenses': {
+                'ant': float(ant_expenses),
+                'normal': float(normal_expenses),
+                'total': float(month_expenses)
+            },
+            'expenses_by_account': list(expenses_by_account)
         })
 
 
@@ -137,6 +161,7 @@ class ReportsView(APIView):
     def get(self, request):
         user = request.user
         period = request.query_params.get('period', 'month')
+        account_filter = request.query_params.get('account')
         
         today = timezone.now().date()
         
@@ -162,6 +187,9 @@ class ReportsView(APIView):
             date__gte=start_date,
             date__lte=end_date
         )
+        
+        if account_filter:
+            transactions = transactions.filter(account_id=account_filter)
         
         income_over_time = transactions.filter(
             transaction_type='ingreso'
@@ -203,6 +231,24 @@ class ReportsView(APIView):
         }
         totals['balance'] = totals['income'] - totals['expenses']
         
+        ant_expenses = transactions.filter(
+            transaction_type='gasto',
+            is_ant_expense=True
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        normal_expenses = transactions.filter(
+            transaction_type='gasto',
+            is_ant_expense=False
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        expenses_by_account = transactions.filter(
+            transaction_type='gasto'
+        ).select_related('account').values(
+            'account__id', 'account__name', 'account__color'
+        ).annotate(
+            total=Sum('amount')
+        ).order_by('-total')
+        
         return Response({
             'period': {
                 'start': start_date,
@@ -212,7 +258,13 @@ class ReportsView(APIView):
             'income_over_time': list(income_over_time),
             'expenses_over_time': list(expenses_over_time),
             'by_category': list(by_category),
-            'totals': totals
+            'totals': totals,
+            'ant_expenses': {
+                'ant': float(ant_expenses),
+                'normal': float(normal_expenses),
+                'total': float(totals['expenses'])
+            },
+            'expenses_by_account': list(expenses_by_account)
         })
 
 

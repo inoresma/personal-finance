@@ -4,7 +4,7 @@ import { computed } from 'vue'
 const props = defineProps({
   title: String,
   value: [String, Number],
-  icon: Object,
+  icon: [Object, Function],
   color: {
     type: String,
     default: 'primary'
@@ -51,6 +51,7 @@ const colorClasses = computed(() => {
     </div>
   </div>
 </template>
+
 
 
 

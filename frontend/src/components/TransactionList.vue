@@ -95,7 +95,12 @@ function getAmountClass(type) {
           </span>
         </div>
         <p class="text-sm text-slate-500 dark:text-slate-400">
-          {{ transaction.account_name }} · {{ formatDate(transaction.date) }}
+          <template v-if="transaction.transaction_type === 'transferencia' && transaction.destination_account_name">
+            {{ transaction.account_name }} → {{ transaction.destination_account_name }} · {{ formatDate(transaction.date) }}
+          </template>
+          <template v-else>
+            {{ transaction.account_name }} · {{ formatDate(transaction.date) }}
+          </template>
         </p>
       </div>
       

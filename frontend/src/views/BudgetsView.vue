@@ -5,7 +5,9 @@ import { useCategoriesStore } from '@/stores/categories'
 import { useUiStore } from '@/stores/ui'
 import { formatMoney } from '@/composables/useCurrency'
 import Modal from '@/components/Modal.vue'
-import { PlusIcon, PencilIcon, TrashIcon, ChartBarIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, ChartBarIcon, FunnelIcon } from '@heroicons/vue/24/outline'
+import api from '@/services/api'
+import TransactionList from '@/components/TransactionList.vue'
 
 const budgetsStore = useBudgetsStore()
 const categoriesStore = useCategoriesStore()
@@ -13,9 +15,14 @@ const uiStore = useUiStore()
 
 const showModal = ref(false)
 const showDeleteModal = ref(false)
+const showDetailModal = ref(false)
+const selectedBudget = ref(null)
 const editingBudget = ref(null)
 const budgetToDelete = ref(null)
 const loading = ref(false)
+const filterType = ref('all')
+const budgetTransactions = ref([])
+const loadingTransactions = ref(false)
 
 const form = ref({
   category: null,
@@ -32,6 +39,34 @@ const periods = [
 ]
 
 const isEditing = computed(() => !!editingBudget.value)
+
+const filteredBudgets = computed(() => {
+  let budgets = [...budgetsStore.budgets]
+  
+  if (filterType.value === 'closest') {
+    budgets.sort((a, b) => b.percentage - a.percentage)
+  } else if (filterType.value === 'furthest') {
+    budgets.sort((a, b) => a.percentage - b.percentage)
+  }
+  
+  return budgets
+})
+
+async function openBudgetDetail(budget) {
+  selectedBudget.value = budget
+  loadingTransactions.value = true
+  showDetailModal.value = true
+  
+  try {
+    const response = await api.get(`/budgets/${budget.id}/transactions/`)
+    budgetTransactions.value = response.data
+  } catch (error) {
+    uiStore.showError('Error al cargar transacciones')
+    budgetTransactions.value = []
+  } finally {
+    loadingTransactions.value = false
+  }
+}
 
 function formatCurrency(value) {
   return formatMoney(value)
@@ -141,12 +176,53 @@ onMounted(async () => {
       </button>
     </div>
     
+    <!-- Filter -->
+    <div class="flex items-center gap-3">
+      <FunnelIcon class="w-4 h-4 text-slate-400" />
+      <div class="flex gap-2 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+        <button
+          @click="filterType = 'all'"
+          :class="[
+            'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+            filterType === 'all'
+              ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          ]"
+        >
+          Todos
+        </button>
+        <button
+          @click="filterType = 'closest'"
+          :class="[
+            'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+            filterType === 'closest'
+              ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          ]"
+        >
+          Más cercano al límite
+        </button>
+        <button
+          @click="filterType = 'furthest'"
+          :class="[
+            'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+            filterType === 'furthest'
+              ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          ]"
+        >
+          Más lejano al límite
+        </button>
+      </div>
+    </div>
+    
     <!-- Budgets Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div
-        v-for="budget in budgetsStore.budgets"
+        v-for="budget in filteredBudgets"
         :key="budget.id"
-        class="card p-5 hover:shadow-md transition-shadow"
+        @click="openBudgetDetail(budget)"
+        class="card p-5 hover:shadow-md transition-shadow cursor-pointer"
       >
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
@@ -306,6 +382,54 @@ onMounted(async () => {
           <button @click="deleteBudget" class="btn-danger">Eliminar</button>
         </div>
       </template>
+    </Modal>
+    
+    <!-- Budget Detail Modal -->
+    <Modal v-if="showDetailModal && selectedBudget" :title="`Detalles: ${selectedBudget.category_name}`" @close="showDetailModal = false" size="lg">
+      <div v-if="loadingTransactions" class="text-center py-8">
+        <div class="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto"></div>
+        <p class="text-sm text-slate-500 mt-2">Cargando transacciones...</p>
+      </div>
+      <div v-else>
+        <div class="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Límite</p>
+              <p class="text-lg font-semibold text-slate-900 dark:text-white">{{ formatCurrency(selectedBudget.amount_limit) }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Gastado</p>
+              <p class="text-lg font-semibold" :class="selectedBudget.is_exceeded ? 'text-red-600' : 'text-slate-900 dark:text-white'">
+                {{ formatCurrency(selectedBudget.spent) }}
+              </p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Porcentaje</p>
+              <p class="text-lg font-semibold" :class="selectedBudget.is_exceeded ? 'text-red-600' : selectedBudget.is_warning ? 'text-amber-600' : 'text-emerald-600'">
+                {{ selectedBudget.percentage.toFixed(1) }}%
+              </p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">{{ selectedBudget.remaining >= 0 ? 'Restante' : 'Excedido' }}</p>
+              <p class="text-lg font-semibold" :class="selectedBudget.remaining >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-600'">
+                {{ formatCurrency(Math.abs(selectedBudget.remaining)) }}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="font-semibold text-slate-900 dark:text-white mb-3">Transacciones</h3>
+          <TransactionList 
+            v-if="budgetTransactions.length > 0"
+            :transactions="budgetTransactions" 
+            compact 
+          />
+          <div v-else class="text-center py-8 text-slate-500 dark:text-slate-400">
+            No hay transacciones en este período
+          </div>
+        </div>
+      </div>
     </Modal>
   </div>
 </template>

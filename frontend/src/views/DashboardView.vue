@@ -8,6 +8,15 @@ import StatCard from '@/components/StatCard.vue'
 import TransactionList from '@/components/TransactionList.vue'
 import ExpenseChart from '@/components/ExpenseChart.vue'
 import BudgetAlerts from '@/components/BudgetAlerts.vue'
+import { Doughnut } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+
+ChartJS.register(ArcElement, Tooltip, Legend)
 import {
   BanknotesIcon,
   ArrowTrendingUpIcon,
@@ -49,6 +58,93 @@ const monthExpenses = computed(() => {
 
 const monthBalance = computed(() => {
   return monthIncome.value - monthExpenses.value
+})
+
+const antExpensesChartData = computed(() => {
+  if (!dashboardData.value?.ant_expenses) return null
+  
+  const ant = dashboardData.value.ant_expenses.ant || 0
+  const normal = dashboardData.value.ant_expenses.normal || 0
+  
+  if (ant === 0 && normal === 0) return null
+  
+  return {
+    labels: ['Gastos hormiga', 'Gastos normales'],
+    datasets: [{
+      data: [ant, normal],
+      backgroundColor: ['#f97316', '#6366f1'],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  }
+})
+
+const antExpensesChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '70%',
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context) {
+          return formatCurrency(context.parsed)
+        }
+      }
+    }
+  }
+}))
+
+const expensesByAccountChartData = computed(() => {
+  if (!dashboardData.value?.expenses_by_account?.length) return null
+  
+  const data = dashboardData.value.expenses_by_account
+  
+  return {
+    labels: data.map(item => item.account__name),
+    datasets: [{
+      data: data.map(item => parseFloat(item.total || 0)),
+      backgroundColor: data.map(item => item.account__color || '#6366f1'),
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  }
+})
+
+const expensesByAccountChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '70%',
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context) {
+          return formatCurrency(context.parsed)
+        }
+      }
+    }
+  }
+}))
+
+const totalAntExpenses = computed(() => {
+  if (!dashboardData.value?.ant_expenses) return 0
+  return dashboardData.value.ant_expenses.total || 0
+})
+
+const totalExpensesByAccount = computed(() => {
+  if (!dashboardData.value?.expenses_by_account?.length) return 0
+  return dashboardData.value.expenses_by_account.reduce((sum, item) => sum + parseFloat(item.total || 0), 0)
 })
 
 const filteredExpensesByCategory = computed(() => {
@@ -266,6 +362,78 @@ onMounted(async () => {
         </router-link>
       </div>
       <TransactionList :transactions="dashboardData?.recent_transactions || []" compact />
+    </div>
+    
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Ant Expenses Chart -->
+      <div class="card p-6">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+            <BugAntIcon class="w-5 h-5 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div>
+            <h2 class="font-display font-semibold text-slate-900 dark:text-white">Gastos hormiga vs normales</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Este mes</p>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <Doughnut v-if="antExpensesChartData" :data="antExpensesChartData" :options="antExpensesChartOptions" />
+          <div v-else class="h-full flex items-center justify-center text-slate-400">
+            Sin datos
+          </div>
+          <div v-if="antExpensesChartData" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white">{{ formatCurrency(totalAntExpenses) }}</p>
+          </div>
+        </div>
+        <div v-if="antExpensesChartData" class="mt-4 flex justify-center gap-6">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+            <span class="text-sm text-slate-600 dark:text-slate-400">Hormiga</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-indigo-500"></div>
+            <span class="text-sm text-slate-600 dark:text-slate-400">Normal</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Expenses by Account Chart -->
+      <div class="card p-6">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <BuildingLibraryIcon class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h2 class="font-display font-semibold text-slate-900 dark:text-white">Gastos por cuenta</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Este mes</p>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <Doughnut v-if="expensesByAccountChartData" :data="expensesByAccountChartData" :options="expensesByAccountChartOptions" />
+          <div v-else class="h-full flex items-center justify-center text-slate-400">
+            Sin datos
+          </div>
+          <div v-if="expensesByAccountChartData" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white">{{ formatCurrency(totalExpensesByAccount) }}</p>
+          </div>
+        </div>
+        <div v-if="expensesByAccountChartData && dashboardData?.expenses_by_account" class="mt-4 space-y-2 max-h-32 overflow-y-auto">
+          <div 
+            v-for="item in dashboardData.expenses_by_account" 
+            :key="item.account__id"
+            class="flex items-center justify-between text-sm"
+          >
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.account__color || '#6366f1' }"></div>
+              <span class="text-slate-600 dark:text-slate-400">{{ item.account__name }}</span>
+            </div>
+            <span class="font-semibold text-slate-900 dark:text-white">{{ formatCurrency(item.total) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
     
     <!-- Ant Expenses Section -->

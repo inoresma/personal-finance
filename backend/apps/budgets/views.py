@@ -3,9 +3,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import Budget
 from .serializers import BudgetSerializer
+from apps.transactions.models import Transaction
+from apps.transactions.serializers import TransactionListSerializer
 
 
 class BudgetViewSet(viewsets.ModelViewSet):
@@ -43,6 +48,37 @@ class BudgetViewSet(viewsets.ModelViewSet):
         budget.is_active = not budget.is_active
         budget.save()
         return Response(BudgetSerializer(budget).data)
+    
+    @action(detail=True, methods=['get'])
+    def transactions(self, request, pk=None):
+        budget = self.get_object()
+        
+        today = timezone.now().date()
+        
+        if budget.period == 'semanal':
+            start = today - timedelta(days=today.weekday())
+            end = start + timedelta(days=6)
+        elif budget.period == 'mensual':
+            start = today.replace(day=1)
+            if today.month == 12:
+                end = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+        else:
+            start = today.replace(month=1, day=1)
+            end = today.replace(month=12, day=31)
+        
+        transactions = Transaction.objects.filter(
+            user=request.user,
+            category=budget.category,
+            transaction_type='gasto',
+            date__gte=start,
+            date__lte=end
+        ).select_related('account', 'category').order_by('-date', '-created_at')
+        
+        serializer = TransactionListSerializer(transactions, many=True)
+        return Response(serializer.data)
+
 
 
 

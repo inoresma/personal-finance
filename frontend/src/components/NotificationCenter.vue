@@ -124,8 +124,7 @@ onUnmounted(() => {
       <div
         v-if="isOpen"
         id="notification-panel"
-        class="absolute right-0 mt-2 w-96 max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden"
-        style="max-height: calc(100vh - 5rem);"
+        class="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-5rem)]"
       >
         <!-- Header -->
         <div class="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-200 dark:border-slate-800">

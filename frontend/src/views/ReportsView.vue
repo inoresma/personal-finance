@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/ui'
 import api from '@/services/api'
 import { formatMoney } from '@/composables/useCurrency'
 import { Line, Doughnut, Bar } from 'vue-chartjs'
+import { BugAntIcon } from '@heroicons/vue/24/outline'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -22,8 +23,10 @@ import {
   ArrowDownTrayIcon,
   CalendarIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  FunnelIcon
 } from '@heroicons/vue/24/outline'
+import { useAccountsStore } from '@/stores/accounts'
 
 ChartJS.register(
   CategoryScale,
@@ -39,10 +42,12 @@ ChartJS.register(
 )
 
 const uiStore = useUiStore()
+const accountsStore = useAccountsStore()
 
 const reportData = ref(null)
 const loading = ref(true)
 const period = ref('month')
+const selectedAccount = ref(null)
 const exporting = ref(false)
 const expandedCategories = ref(new Set())
 
@@ -55,7 +60,11 @@ const periods = [
 async function fetchReport() {
   loading.value = true
   try {
-    const response = await api.get('/reports/', { params: { period: period.value } })
+    const params = { period: period.value }
+    if (selectedAccount.value) {
+      params.account = selectedAccount.value
+    }
+    const response = await api.get('/reports/', { params })
     reportData.value = response.data
   } catch (error) {
     uiStore.showError('Error al cargar reportes')
@@ -254,6 +263,93 @@ const doughnutOptions = computed(() => ({
   }
 }))
 
+const antExpensesChartData = computed(() => {
+  if (!reportData.value?.ant_expenses) return null
+  
+  const ant = reportData.value.ant_expenses.ant || 0
+  const normal = reportData.value.ant_expenses.normal || 0
+  
+  if (ant === 0 && normal === 0) return null
+  
+  return {
+    labels: ['Gastos hormiga', 'Gastos normales'],
+    datasets: [{
+      data: [ant, normal],
+      backgroundColor: ['#f97316', '#6366f1'],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  }
+})
+
+const antExpensesChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '70%',
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context) {
+          return formatCurrency(context.parsed)
+        }
+      }
+    }
+  }
+}))
+
+const expensesByAccountChartData = computed(() => {
+  if (!reportData.value?.expenses_by_account?.length) return null
+  
+  const data = reportData.value.expenses_by_account
+  
+  return {
+    labels: data.map(item => item.account__name),
+    datasets: [{
+      data: data.map(item => parseFloat(item.total || 0)),
+      backgroundColor: data.map(item => item.account__color || '#6366f1'),
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  }
+})
+
+const expensesByAccountChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '70%',
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      backgroundColor: '#1e293b',
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: {
+        label: function(context) {
+          return formatCurrency(context.parsed)
+        }
+      }
+    }
+  }
+}))
+
+const totalAntExpenses = computed(() => {
+  if (!reportData.value?.ant_expenses) return 0
+  return reportData.value.ant_expenses.total || 0
+})
+
+const totalExpensesByAccount = computed(() => {
+  if (!reportData.value?.expenses_by_account?.length) return 0
+  return reportData.value.expenses_by_account.reduce((sum, item) => sum + parseFloat(item.total || 0), 0)
+})
+
 async function exportData(format) {
   exporting.value = true
   try {
@@ -304,8 +400,11 @@ function hasSubcategories(category) {
   return category.subcategories && category.subcategories.length > 0
 }
 
-watch(period, fetchReport)
-onMounted(fetchReport)
+watch([period, selectedAccount], fetchReport)
+onMounted(async () => {
+  await accountsStore.fetchAccounts()
+  fetchReport()
+})
 </script>
 
 <template>
@@ -321,7 +420,18 @@ onMounted(fetchReport)
         </p>
       </div>
       
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- Account Filter -->
+        <div class="flex items-center gap-2">
+          <FunnelIcon class="w-4 h-4 text-slate-400" />
+          <select v-model="selectedAccount" class="input py-1.5 text-sm w-[160px]">
+            <option :value="null">Todas las cuentas</option>
+            <option v-for="acc in accountsStore.accounts" :key="acc.id" :value="acc.id">
+              {{ acc.name }}
+            </option>
+          </select>
+        </div>
+        
         <!-- Period Selector -->
         <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
           <button
@@ -394,6 +504,66 @@ onMounted(fetchReport)
       </div>
     </div>
     
+    <!-- Additional Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Ant Expenses Chart -->
+      <div class="card p-6">
+        <h3 class="font-display font-semibold text-slate-900 dark:text-white mb-4">
+          Gastos hormiga vs normales
+        </h3>
+        <div class="relative h-64 w-full">
+          <Doughnut v-if="antExpensesChartData" :data="antExpensesChartData" :options="antExpensesChartOptions" />
+          <div v-else class="h-full flex items-center justify-center text-slate-400">
+            Sin datos
+          </div>
+          <div v-if="antExpensesChartData" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white">{{ formatCurrency(totalAntExpenses) }}</p>
+          </div>
+        </div>
+        <div v-if="antExpensesChartData" class="mt-4 flex justify-center gap-6">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+            <span class="text-sm text-slate-600 dark:text-slate-400">Hormiga</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-indigo-500"></div>
+            <span class="text-sm text-slate-600 dark:text-slate-400">Normal</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Expenses by Account Chart -->
+      <div class="card p-6">
+        <h3 class="font-display font-semibold text-slate-900 dark:text-white mb-4">
+          Gastos por cuenta
+        </h3>
+        <div class="relative h-64 w-full">
+          <Doughnut v-if="expensesByAccountChartData" :data="expensesByAccountChartData" :options="expensesByAccountChartOptions" />
+          <div v-else class="h-full flex items-center justify-center text-slate-400">
+            Sin datos
+          </div>
+          <div v-if="expensesByAccountChartData" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <p class="text-sm text-slate-500 dark:text-slate-400">Total</p>
+            <p class="text-xl font-bold text-slate-900 dark:text-white">{{ formatCurrency(totalExpensesByAccount) }}</p>
+          </div>
+        </div>
+        <div v-if="expensesByAccountChartData && reportData?.expenses_by_account" class="mt-4 space-y-2 max-h-32 overflow-y-auto">
+          <div 
+            v-for="item in reportData.expenses_by_account" 
+            :key="item.account__id"
+            class="flex items-center justify-between text-sm"
+          >
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.account__color || '#6366f1' }"></div>
+              <span class="text-slate-600 dark:text-slate-400">{{ item.account__name }}</span>
+            </div>
+            <span class="font-semibold text-slate-900 dark:text-white">{{ formatCurrency(item.total) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Charts -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Line Chart -->
@@ -416,10 +586,14 @@ onMounted(fetchReport)
         </h3>
         <div class="flex flex-col lg:flex-row gap-6">
           <!-- Chart -->
-          <div class="h-64 w-full lg:w-56 flex-shrink-0">
+          <div class="relative h-64 w-full lg:w-56 flex-shrink-0">
             <Doughnut v-if="doughnutChartData" :data="doughnutChartData" :options="doughnutOptions" />
             <div v-else class="h-full flex items-center justify-center text-slate-400">
               Sin gastos
+            </div>
+            <div v-if="doughnutChartData" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <p class="text-sm text-slate-500 dark:text-slate-400">Total</p>
+              <p class="text-xl font-bold text-slate-900 dark:text-white">{{ formatCurrency(totalExpenses) }}</p>
             </div>
           </div>
           

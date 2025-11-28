@@ -5,16 +5,22 @@ import { useUiStore } from '@/stores/ui'
 import { formatMoney } from '@/composables/useCurrency'
 import Modal from '@/components/Modal.vue'
 import AccountCard from '@/components/AccountCard.vue'
+import TransactionList from '@/components/TransactionList.vue'
 import { PlusIcon } from '@heroicons/vue/24/outline'
+import api from '@/services/api'
 
 const accountsStore = useAccountsStore()
 const uiStore = useUiStore()
 
 const showModal = ref(false)
 const showDeleteModal = ref(false)
+const showDetailModal = ref(false)
+const selectedAccount = ref(null)
 const editingAccount = ref(null)
 const accountToDelete = ref(null)
 const loading = ref(false)
+const accountDetails = ref(null)
+const loadingDetails = ref(false)
 
 const form = ref({
   name: '',
@@ -128,6 +134,22 @@ function formatCurrency(value) {
   return formatMoney(value)
 }
 
+async function openAccountDetail(account) {
+  selectedAccount.value = account
+  loadingDetails.value = true
+  showDetailModal.value = true
+  
+  try {
+    const response = await api.get(`/accounts/${account.id}/details/`)
+    accountDetails.value = response.data
+  } catch (error) {
+    uiStore.showError('Error al cargar detalles de la cuenta')
+    accountDetails.value = null
+  } finally {
+    loadingDetails.value = false
+  }
+}
+
 onMounted(() => {
   accountsStore.fetchAccounts()
 })
@@ -168,6 +190,7 @@ onMounted(() => {
         :account="account"
         @edit="openEditAccount"
         @delete="confirmDeleteAccount"
+        @detail="openAccountDetail"
       />
     </div>
     
@@ -285,6 +308,48 @@ onMounted(() => {
           <button @click="deleteAccount" class="btn-danger">Eliminar</button>
         </div>
       </template>
+    </Modal>
+    
+    <!-- Account Detail Modal -->
+    <Modal v-if="showDetailModal && selectedAccount" :title="`Detalles: ${selectedAccount.name}`" @close="showDetailModal = false" size="lg">
+      <div v-if="loadingDetails" class="text-center py-8">
+        <div class="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto"></div>
+        <p class="text-sm text-slate-500 mt-2">Cargando detalles...</p>
+      </div>
+      <div v-else-if="accountDetails">
+        <div class="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Ingresos del mes</p>
+              <p class="text-lg font-semibold text-emerald-600">{{ formatCurrency(accountDetails.summary.income) }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Gastos del mes</p>
+              <p class="text-lg font-semibold text-red-600">{{ formatCurrency(accountDetails.summary.expenses) }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Transferencias salientes</p>
+              <p class="text-lg font-semibold text-blue-600">{{ formatCurrency(accountDetails.summary.transfers_out) }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Transferencias entrantes</p>
+              <p class="text-lg font-semibold text-emerald-600">{{ formatCurrency(accountDetails.summary.transfers_in) }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="font-semibold text-slate-900 dark:text-white mb-3">Últimas transacciones</h3>
+          <TransactionList 
+            v-if="accountDetails.transactions.length > 0"
+            :transactions="accountDetails.transactions" 
+            compact 
+          />
+          <div v-else class="text-center py-8 text-slate-500 dark:text-slate-400">
+            No hay transacciones
+          </div>
+        </div>
+      </div>
     </Modal>
   </div>
 </template>

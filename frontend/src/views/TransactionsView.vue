@@ -7,6 +7,7 @@ import { useUiStore } from '@/stores/ui'
 import TransactionList from '@/components/TransactionList.vue'
 import TransactionModal from '@/components/TransactionModal.vue'
 import Modal from '@/components/Modal.vue'
+import DateInput from '@/components/DateInput.vue'
 import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, BugAntIcon } from '@heroicons/vue/24/outline'
 
 const transactionsStore = useTransactionsStore()
@@ -176,12 +177,12 @@ onMounted(async () => {
           
           <div>
             <label class="label">Desde</label>
-            <input v-model="filters.date_from" type="date" class="input" />
+            <DateInput v-model="filters.date_from" />
           </div>
           
           <div>
             <label class="label">Hasta</label>
-            <input v-model="filters.date_to" type="date" class="input" />
+            <DateInput v-model="filters.date_to" />
           </div>
           
           <div>
