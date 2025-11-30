@@ -4,7 +4,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     envVars:
       - key: DEBUG
         value: False
@@ -42,14 +42,14 @@ services:
     env: docker
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
-    plan: starter
+    plan: free
     envVars:
       - key: VITE_API_URL
         sync: false
 
 databases:
   - name: personal-finance-db
-    plan: starter
+    plan: free
     databaseName: finance_db
     user: finance_user
 
