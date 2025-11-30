@@ -14,3 +14,5 @@ class InvestmentAdmin(admin.ModelAdmin):
 
 
 
+
+
