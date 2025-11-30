@@ -5,7 +5,6 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: starter
-    startCommand: ./start.sh
     envVars:
       - key: DEBUG
         value: False
