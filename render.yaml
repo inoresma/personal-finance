@@ -48,7 +48,7 @@ services:
       - key: VITE_API_URL
         sync: false
 
-  - type: pspg
+  - type: pg
     name: personal-finance-db
     plan: starter
     databaseName: finance_db
