@@ -5,9 +5,14 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
+SECRET_KEY = config('SECRET_KEY', default=None)
 
-DEBUG = config('DEBUG', default=True, cast=bool)
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ValueError('SECRET_KEY debe estar configurado en las variables de entorno para producción')
+    SECRET_KEY = 'django-insecure-dev-key-change-in-production'
+
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
@@ -36,6 +41,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -127,9 +133,26 @@ CORS_ALLOWED_ORIGINS = config(
 
 CORS_ALLOW_CREDENTIALS = True
 
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS if origin.strip()]
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Finanzas Personales API',
     'DESCRIPTION': 'API para gestión de finanzas personales',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

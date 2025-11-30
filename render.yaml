@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: personal-finance-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    startCommand: ./start.sh
+    envVars:
+      - key: DEBUG
+        value: False
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: DB_NAME
+        fromDatabase:
+          name: personal-finance-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: personal-finance-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: personal-finance-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: personal-finance-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: personal-finance-db
+          property: port
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: PORT
+        value: 8000
+
+  - type: web
+    name: personal-finance-frontend
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: starter
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+
+  - type: pspg
+    name: personal-finance-db
+    plan: starter
+    databaseName: finance_db
+    user: finance_user
+
