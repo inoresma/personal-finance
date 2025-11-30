@@ -48,8 +48,8 @@ services:
       - key: VITE_API_URL
         sync: false
 
-  - type: pg
-    name: personal-finance-db
+databases:
+  - name: personal-finance-db
     plan: starter
     databaseName: finance_db
     user: finance_user
