@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useCategoriesStore } from '@/stores/categories'
 import { useUiStore } from '@/stores/ui'
 import Modal from '@/components/Modal.vue'
+import CategoryIcon from '@/components/CategoryIcon.vue'
+import IconSelector from '@/components/IconSelector.vue'
 import { PlusIcon, PencilIcon, TrashIcon, TagIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
 
 const categoriesStore = useCategoriesStore()
@@ -21,7 +23,7 @@ const form = ref({
   name: '',
   category_type: 'gasto',
   color: '#6366F1',
-  icon: 'tag',
+  icon: 'otros',
   parent: null,
 })
 
@@ -33,9 +35,19 @@ const colors = [
 const isEditing = computed(() => !!editingCategory.value)
 
 const filteredCategories = computed(() => {
-  return categoriesStore.categories.filter(
-    c => c.category_type === activeTab.value && !c.parent
+  if (!categoriesStore.categories || !Array.isArray(categoriesStore.categories)) {
+    console.log('filteredCategories: categories no es un array')
+    return []
+  }
+  console.log('filteredCategories: total categorías:', categoriesStore.categories.length)
+  console.log('filteredCategories: activeTab:', activeTab.value)
+  console.log('filteredCategories: categorías de ingreso:', categoriesStore.categories.filter(c => c && c.category_type === 'ingreso'))
+  
+  const filtered = categoriesStore.categories.filter(
+    c => c && c.category_type === activeTab.value && !c.parent
   )
+  console.log('filteredCategories: resultado filtrado:', filtered.length, filtered)
+  return filtered
 })
 
 const modalTitle = computed(() => {
@@ -53,7 +65,7 @@ function openNewCategory() {
     name: '',
     category_type: activeTab.value,
     color: '#6366F1',
-    icon: 'tag',
+    icon: 'otros',
     parent: null,
   }
   showModal.value = true
@@ -67,7 +79,7 @@ function openNewSubcategory(category) {
     name: '',
     category_type: category.category_type,
     color: category.color,
-    icon: 'tag',
+    icon: category.icon || 'otros',
     parent: category.id,
   }
   showModal.value = true
@@ -101,24 +113,55 @@ function confirmDeleteCategory(category) {
 }
 
 async function handleSubmit() {
-  if (!form.value.name) {
+  console.log('handleSubmit llamado', { form: form.value, isEditing: isEditing.value })
+  
+  if (!form.value.name || !form.value.name.trim()) {
     uiStore.showError('El nombre es requerido')
+    return
+  }
+  
+  if (!form.value.category_type || !['ingreso', 'gasto'].includes(form.value.category_type)) {
+    console.error('Tipo de categoría inválido:', form.value.category_type)
+    uiStore.showError('El tipo de categoría es requerido')
     return
   }
   
   loading.value = true
   
   try {
+    const categoryData = {
+      name: form.value.name.trim(),
+      category_type: form.value.category_type,
+      color: form.value.color || '#6366F1',
+      icon: form.value.icon || 'otros',
+      parent: form.value.parent || null,
+    }
+    
+    console.log('Datos a enviar:', categoryData)
+    
     if (isEditing.value) {
-      await categoriesStore.updateCategory(editingCategory.value.id, form.value)
+      console.log('Actualizando categoría:', editingCategory.value.id)
+      await categoriesStore.updateCategory(editingCategory.value.id, categoryData)
       uiStore.showSuccess('Categoría actualizada')
     } else {
-      await categoriesStore.createCategory(form.value)
+      console.log('Creando categoría...')
+      console.log('activeTab antes de crear:', activeTab.value)
+      const result = await categoriesStore.createCategory(categoryData)
+      console.log('Categoría creada:', result)
+      console.log('activeTab después de crear:', activeTab.value)
+      console.log('Total categorías en store:', categoriesStore.categories.length)
+      console.log('Categorías de ingreso en store:', categoriesStore.categories.filter(c => c.category_type === 'ingreso'))
       uiStore.showSuccess('Categoría creada')
     }
+    await nextTick()
+    console.log('Después de nextTick - activeTab:', activeTab.value)
+    console.log('Después de nextTick - filteredCategories:', filteredCategories.value.length)
     showModal.value = false
   } catch (error) {
-    uiStore.showError(error.message || 'Error al guardar')
+    console.error('Error completo al guardar categoría:', error)
+    console.error('Error response:', error.response)
+    const errorMessage = error.message || error.response?.data?.detail || 'Error al guardar'
+    uiStore.showError(errorMessage)
   } finally {
     loading.value = false
   }
@@ -129,6 +172,7 @@ async function deleteCategory() {
   
   try {
     await categoriesStore.deleteCategory(categoryToDelete.value.id)
+    await categoriesStore.fetchCategories()
     uiStore.showSuccess('Categoría eliminada')
   } catch (error) {
     uiStore.showError(error.message || 'Error al eliminar')
@@ -197,10 +241,14 @@ onMounted(() => {
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
             <div
-              class="w-10 h-10 rounded-xl flex items-center justify-center"
-              :style="{ backgroundColor: category.color + '20' }"
+              class="w-14 h-14 rounded-xl flex items-center justify-center border-2"
+              :style="{ backgroundColor: category.color + '20', borderColor: category.color + '40' }"
             >
-              <TagIcon class="w-5 h-5" :style="{ color: category.color }" />
+              <CategoryIcon 
+                :icon="category.icon || 'otros'" 
+                class="w-7 h-7"
+                :style="{ color: category.color }"
+              />
             </div>
             <div>
               <h3 class="font-medium text-slate-900 dark:text-white">{{ category.name }}</h3>
@@ -244,12 +292,19 @@ onMounted(() => {
             >
               <div class="flex items-center gap-2">
                 <ChevronRightIcon class="w-3 h-3 text-slate-400" />
-                <span
-                  class="text-sm px-2 py-0.5 rounded-full"
-                  :style="{ backgroundColor: sub.color + '20', color: sub.color }"
-                >
-                  {{ sub.name }}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <CategoryIcon 
+                    :icon="sub.icon || 'otros'" 
+                    class="w-4 h-4"
+                    :style="{ color: sub.color }"
+                  />
+                  <span
+                    class="text-sm px-2 py-0.5 rounded-full"
+                    :style="{ backgroundColor: sub.color + '20', color: sub.color }"
+                  >
+                    {{ sub.name }}
+                  </span>
+                </div>
               </div>
               <div class="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-opacity">
                 <button
@@ -336,6 +391,8 @@ onMounted(() => {
             />
           </div>
         </div>
+        
+        <IconSelector v-model="form.icon" />
       </form>
       
       <template #footer>

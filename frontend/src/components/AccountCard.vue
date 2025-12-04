@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { PencilIcon, TrashIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline'
+import { PencilIcon, TrashIcon, EllipsisVerticalIcon, AdjustmentsHorizontalIcon } from '@heroicons/vue/24/outline'
 import { 
   BanknotesIcon, 
   BuildingLibraryIcon, 
@@ -17,7 +17,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'detail'])
+const emit = defineEmits(['edit', 'delete', 'detail', 'adjust'])
 
 const accountIcons = {
   efectivo: BanknotesIcon,
@@ -61,14 +61,23 @@ function formatCurrency(value) {
       
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
+          @click.stop="emit('adjust', account)"
+          class="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+          title="Ajustar balance"
+        >
+          <AdjustmentsHorizontalIcon class="w-4 h-4" />
+        </button>
+        <button
           @click.stop="emit('edit', account)"
           class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
+          title="Editar"
         >
           <PencilIcon class="w-4 h-4" />
         </button>
         <button
           @click.stop="emit('delete', account)"
           class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
+          title="Eliminar"
         >
           <TrashIcon class="w-4 h-4" />
         </button>

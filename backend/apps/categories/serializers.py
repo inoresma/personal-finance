@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category
+from .models import Category, SecondaryCategory
 
 
 class SubcategorySerializer(serializers.ModelSerializer):
@@ -20,10 +20,11 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'is_default', 'created_at']
     
-    def create(self, validated_data):
-        user = self.context['request'].user
-        validated_data['user'] = user
-        return super().create(validated_data)
+    def validate_category_type(self, value):
+        valid_types = ['ingreso', 'gasto']
+        if value not in valid_types:
+            raise serializers.ValidationError(f'El tipo de categoría debe ser uno de: {", ".join(valid_types)}')
+        return value
     
     def validate_parent(self, value):
         if value and value.parent:
@@ -42,6 +43,21 @@ class CategoryListSerializer(serializers.ModelSerializer):
             'id', 'name', 'category_type', 'category_type_display',
             'color', 'icon', 'parent', 'parent_name', 'is_default', 'subcategories'
         ]
+
+
+class SecondaryCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SecondaryCategory
+        fields = ['id', 'name', 'color', 'icon', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class SecondaryCategoryListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SecondaryCategory
+        fields = ['id', 'name', 'color', 'icon']
+
+
 
 
 

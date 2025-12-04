@@ -8,9 +8,10 @@ from django.utils import timezone
 from datetime import timedelta
 
 from .models import Account
-from .serializers import AccountSerializer, AccountBalanceUpdateSerializer
+from .serializers import AccountSerializer, AccountBalanceUpdateSerializer, AccountAdjustBalanceSerializer
 from apps.transactions.models import Transaction
 from apps.transactions.serializers import TransactionListSerializer
+from datetime import date
 
 
 class AccountViewSet(viewsets.ModelViewSet):
@@ -41,6 +42,34 @@ class AccountViewSet(viewsets.ModelViewSet):
             'accounts_count': accounts.count()
         })
     
+    @action(detail=True, methods=['post'])
+    def adjust_balance(self, request, pk=None):
+        account = self.get_object()
+        serializer = AccountAdjustBalanceSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            new_balance = serializer.validated_data['new_balance']
+            description = serializer.validated_data.get('description', '')
+            
+            if not description:
+                description = f'Ajuste de balance: {account.balance} → {new_balance}'
+            
+            adjustment = Transaction.objects.create(
+                user=request.user,
+                transaction_type='ajuste',
+                amount=new_balance,
+                description=description,
+                date=date.today(),
+                account=account
+            )
+            
+            return Response({
+                'account': AccountSerializer(account).data,
+                'adjustment': TransactionListSerializer(adjustment).data
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
         account = self.get_object()
@@ -51,7 +80,7 @@ class AccountViewSet(viewsets.ModelViewSet):
             account=account,
             date__gte=month_start,
             date__lte=today
-        )
+        ).exclude(transaction_type='ajuste')
         
         income = transactions.filter(transaction_type='ingreso').aggregate(total=Sum('amount'))['total'] or 0
         expenses = transactions.filter(transaction_type='gasto').aggregate(total=Sum('amount'))['total'] or 0

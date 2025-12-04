@@ -8,6 +8,9 @@ import StatCard from '@/components/StatCard.vue'
 import TransactionList from '@/components/TransactionList.vue'
 import ExpenseChart from '@/components/ExpenseChart.vue'
 import BudgetAlerts from '@/components/BudgetAlerts.vue'
+import DateInput from '@/components/DateInput.vue'
+import LineChart from '@/components/LineChart.vue'
+import BarChart from '@/components/BarChart.vue'
 import { Doughnut } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -27,6 +30,7 @@ import {
   BugAntIcon,
   FunnelIcon,
   BuildingLibraryIcon,
+  CalendarIcon,
 } from '@heroicons/vue/24/outline'
 
 const accountsStore = useAccountsStore()
@@ -39,6 +43,74 @@ const loading = ref(true)
 
 const selectedAccount = ref(null)
 const selectedCategory = ref(null)
+const dateFrom = ref(null)
+const dateTo = ref(null)
+const selectedPeriod = ref('this_month')
+const transactionType = ref(null)
+const showCustomDates = ref(false)
+
+function getPeriodDates(period) {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = today.getMonth()
+  
+  function formatDate(date) {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+  
+  switch(period) {
+    case 'this_month':
+      return {
+        from: formatDate(new Date(year, month, 1)),
+        to: formatDate(today)
+      }
+    case 'last_month':
+      const lastMonth = new Date(year, month - 1, 1)
+      const lastMonthEnd = new Date(year, month, 0)
+      return {
+        from: formatDate(lastMonth),
+        to: formatDate(lastMonthEnd)
+      }
+    case 'last_3_months':
+      const threeMonthsAgo = new Date(year, month - 2, 1)
+      return {
+        from: formatDate(threeMonthsAgo),
+        to: formatDate(today)
+      }
+    case 'this_year':
+      return {
+        from: formatDate(new Date(year, 0, 1)),
+        to: formatDate(today)
+      }
+    case 'custom':
+      showCustomDates.value = true
+      return {
+        from: dateFrom.value || formatDate(new Date(year, month, 1)),
+        to: dateTo.value || formatDate(today)
+      }
+    default:
+      return {
+        from: formatDate(new Date(year, month, 1)),
+        to: formatDate(today)
+      }
+  }
+}
+
+function setPeriod(period) {
+  selectedPeriod.value = period
+  if (period !== 'custom') {
+    showCustomDates.value = false
+    const dates = getPeriodDates(period)
+    dateFrom.value = dates.from
+    dateTo.value = dates.to
+  } else {
+    showCustomDates.value = true
+  }
+  fetchDashboard()
+}
 
 const totalBalance = computed(() => {
   if (selectedAccount.value) {
@@ -155,17 +227,133 @@ const filteredExpensesByCategory = computed(() => {
   )
 })
 
+const monthlyTrendsData = computed(() => {
+  if (!dashboardData.value?.monthly_trends?.length) return null
+  
+  const trends = dashboardData.value.monthly_trends
+  return {
+    labels: trends.map(t => t.month_label),
+    datasets: [
+      {
+        label: 'Ingresos',
+        data: trends.map(t => t.income),
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        tension: 0.4,
+        fill: true
+      },
+      {
+        label: 'Gastos',
+        data: trends.map(t => t.expenses),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  }
+})
+
+const dailyExpensesData = computed(() => {
+  if (!dashboardData.value?.daily_expenses?.length) return null
+  
+  const expenses = dashboardData.value.daily_expenses
+  return {
+    labels: expenses.map(e => `${e.day} ${e.day_name}`),
+    data: expenses.map(e => e.total)
+  }
+})
+
+const topCategories = computed(() => {
+  if (!dashboardData.value?.expenses_by_category?.length) return []
+  return dashboardData.value.expenses_by_category
+    .slice(0, 5)
+    .map(cat => ({
+      name: cat.category__name || 'Sin categoría',
+      total: parseFloat(cat.total || 0),
+      color: cat.category__color || '#6366f1',
+      percentage: dashboardData.value.month_summary?.expenses 
+        ? ((parseFloat(cat.total || 0) / dashboardData.value.month_summary.expenses) * 100).toFixed(1)
+        : 0
+    }))
+})
+
+const previousMonthComparison = computed(() => {
+  if (!dashboardData.value?.monthly_trends?.length || dashboardData.value.monthly_trends.length < 2) {
+    return null
+  }
+  
+  const current = dashboardData.value.monthly_trends[dashboardData.value.monthly_trends.length - 1]
+  const previous = dashboardData.value.monthly_trends[dashboardData.value.monthly_trends.length - 2]
+  
+  const incomeChange = previous.income > 0 
+    ? ((current.income - previous.income) / previous.income) * 100 
+    : 0
+  const expensesChange = previous.expenses > 0 
+    ? ((current.expenses - previous.expenses) / previous.expenses) * 100 
+    : 0
+  
+  return {
+    income: {
+      current: current.income,
+      previous: previous.income,
+      change: incomeChange,
+      isPositive: incomeChange >= 0
+    },
+    expenses: {
+      current: current.expenses,
+      previous: previous.expenses,
+      change: expensesChange,
+      isPositive: expensesChange <= 0
+    }
+  }
+})
+
+const savingsRate = computed(() => {
+  if (!monthIncome.value || monthIncome.value === 0) return 0
+  return ((monthBalance.value / monthIncome.value) * 100).toFixed(1)
+})
+
+const antExpensesPercentage = computed(() => {
+  if (!monthExpenses.value || monthExpenses.value === 0) return 0
+  const ant = dashboardData.value?.ant_expenses?.ant || 0
+  return ((ant / monthExpenses.value) * 100).toFixed(1)
+})
+
 async function fetchDashboard() {
   loading.value = true
   try {
     const params = {}
     if (selectedAccount.value) params.account = selectedAccount.value
     if (selectedCategory.value) params.category = selectedCategory.value
+    if (transactionType.value) params.transaction_type = transactionType.value
+    
+    if (selectedPeriod.value !== 'custom') {
+      const dates = getPeriodDates(selectedPeriod.value)
+      params.date_from = dates.from
+      params.date_to = dates.to
+    } else {
+      if (dateFrom.value) params.date_from = dateFrom.value
+      if (dateTo.value) params.date_to = dateTo.value
+    }
+    
+    if (!params.date_from || !params.date_to) {
+      const dates = getPeriodDates('this_month')
+      params.date_from = dates.from
+      params.date_to = dates.to
+    }
+    
+    console.log('Fetching dashboard with params:', params)
     
     const [dashRes, antRes] = await Promise.all([
       api.get('/reports/dashboard/', { params }),
       api.get('/transactions/ant_expenses/', { params })
     ])
+    
+    console.log('Dashboard response:', dashRes.data)
+    console.log('Month summary:', dashRes.data?.month_summary)
+    console.log('Total balance:', dashRes.data?.total_balance)
+    
     dashboardData.value = dashRes.data
     antExpensesData.value = antRes.data
     
@@ -178,6 +366,23 @@ async function fetchDashboard() {
     }
   } catch (error) {
     console.error('Error fetching dashboard:', error)
+    console.error('Error details:', error.response?.data || error.message)
+    if (error.response?.data) {
+      dashboardData.value = {
+        total_balance: 0,
+        month_summary: { income: 0, expenses: 0, balance: 0 },
+        ant_expenses: { ant: 0, normal: 0, total: 0 },
+        expenses_by_category: [],
+        expenses_by_account: [],
+        account_stats: {},
+        recent_transactions: [],
+        budget_alerts: [],
+        investments_total: 0,
+        debts_remaining: 0,
+        monthly_trends: [],
+        daily_expenses: []
+      }
+    }
   } finally {
     loading.value = false
   }
@@ -190,16 +395,29 @@ function formatCurrency(value, currency = 'CLP') {
 function clearFilters() {
   selectedAccount.value = null
   selectedCategory.value = null
+  transactionType.value = null
+  setPeriod('this_month')
 }
 
-watch([selectedAccount, selectedCategory], () => {
+watch([selectedAccount, selectedCategory, transactionType, dateFrom, dateTo], () => {
   fetchDashboard()
 })
 
+watch(() => accountsStore.accounts, () => {
+  if (accountsStore.accounts.length > 0) {
+    fetchDashboard()
+  }
+}, { deep: true })
+
 onMounted(async () => {
+  setPeriod('this_month')
+  const dates = getPeriodDates('this_month')
+  dateFrom.value = dates.from
+  dateTo.value = dates.to
+  
   await accountsStore.fetchAccounts()
   await categoriesStore.fetchCategories()
-  fetchDashboard()
+  await fetchDashboard()
 })
 </script>
 
@@ -217,27 +435,107 @@ onMounted(async () => {
       </div>
       
       <!-- Filters -->
-      <div class="flex flex-wrap items-center gap-3">
-        <FunnelIcon class="w-4 h-4 text-slate-400 hidden sm:block" />
-        <select v-model="selectedAccount" class="input py-1.5 text-sm w-[160px]">
-          <option :value="null">Todas las cuentas</option>
-          <option v-for="acc in accountsStore.accounts" :key="acc.id" :value="acc.id">
-            {{ acc.name }}
-          </option>
-        </select>
-        <select v-model="selectedCategory" class="input py-1.5 text-sm w-[160px]">
-          <option :value="null">Todas las categorías</option>
-          <option v-for="cat in categoriesStore.expenseCategories.filter(c => !c.parent)" :key="cat.id" :value="cat.id">
-            {{ cat.name }}
-          </option>
-        </select>
-        <button 
-          v-if="selectedAccount || selectedCategory" 
-          @click="clearFilters" 
-          class="text-sm text-primary-600 hover:underline"
-        >
-          Limpiar
-        </button>
+      <div class="flex flex-col gap-4">
+        <!-- Period Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            @click="setPeriod('this_month')"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              selectedPeriod === 'this_month'
+                ? 'bg-primary-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            ]"
+          >
+            Este mes
+          </button>
+          <button
+            @click="setPeriod('last_month')"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              selectedPeriod === 'last_month'
+                ? 'bg-primary-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            ]"
+          >
+            Mes anterior
+          </button>
+          <button
+            @click="setPeriod('last_3_months')"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              selectedPeriod === 'last_3_months'
+                ? 'bg-primary-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            ]"
+          >
+            Últimos 3 meses
+          </button>
+          <button
+            @click="setPeriod('this_year')"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              selectedPeriod === 'this_year'
+                ? 'bg-primary-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            ]"
+          >
+            Este año
+          </button>
+          <button
+            @click="setPeriod('custom')"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1',
+              selectedPeriod === 'custom'
+                ? 'bg-primary-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            ]"
+          >
+            <CalendarIcon class="w-4 h-4" />
+            Personalizado
+          </button>
+        </div>
+        
+        <!-- Custom Date Range -->
+        <div v-if="showCustomDates" class="flex flex-wrap items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-slate-600 dark:text-slate-400">Desde:</label>
+            <DateInput v-model="dateFrom" />
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-slate-600 dark:text-slate-400">Hasta:</label>
+            <DateInput v-model="dateTo" />
+          </div>
+        </div>
+        
+        <!-- Other Filters -->
+        <div class="flex flex-wrap items-center gap-3">
+          <FunnelIcon class="w-4 h-4 text-slate-400 hidden sm:block" />
+          <select v-model="selectedAccount" class="input py-1.5 text-sm w-[160px]">
+            <option :value="null">Todas las cuentas</option>
+            <option v-for="acc in accountsStore.accounts" :key="acc.id" :value="acc.id">
+              {{ acc.name }}
+            </option>
+          </select>
+          <select v-model="selectedCategory" class="input py-1.5 text-sm w-[160px]">
+            <option :value="null">Todas las categorías</option>
+            <option v-for="cat in categoriesStore.expenseCategories.filter(c => !c.parent)" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </select>
+          <select v-model="transactionType" class="input py-1.5 text-sm w-[160px]">
+            <option :value="null">Todos los tipos</option>
+            <option value="ingreso">Solo ingresos</option>
+            <option value="gasto">Solo gastos</option>
+          </select>
+          <button 
+            v-if="selectedAccount || selectedCategory || transactionType || selectedPeriod !== 'this_month'" 
+            @click="clearFilters" 
+            class="text-sm text-primary-600 hover:underline px-2"
+          >
+            Limpiar
+          </button>
+        </div>
       </div>
     </div>
     
@@ -312,6 +610,189 @@ onMounted(async () => {
           <p class="text-xs text-slate-500 mt-1">{{ acc.currency }}</p>
         </div>
       </div>
+    </div>
+    
+    <!-- Monthly Trends Chart -->
+    <div v-if="monthlyTrendsData && !selectedAccount && !selectedCategory" class="card p-6">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+          <PresentationChartLineIcon class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+        </div>
+        <div>
+          <h2 class="font-display font-semibold text-slate-900 dark:text-white">Tendencias Mensuales</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Ingresos vs Gastos</p>
+        </div>
+      </div>
+      <LineChart 
+        :labels="monthlyTrendsData.labels"
+        :datasets="monthlyTrendsData.datasets"
+        :height="300"
+      />
+    </div>
+    
+    <!-- Comparison Cards -->
+    <div v-if="previousMonthComparison && !selectedAccount && !selectedCategory" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Ingresos</p>
+            <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {{ formatCurrency(previousMonthComparison.income.current) }}
+            </p>
+          </div>
+          <div 
+            class="flex items-center gap-1 px-3 py-1.5 rounded-lg"
+            :class="previousMonthComparison.income.isPositive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'"
+          >
+            <ArrowTrendingUpIcon v-if="previousMonthComparison.income.isPositive" class="w-4 h-4" />
+            <ArrowTrendingDownIcon v-else class="w-4 h-4" />
+            <span class="text-sm font-semibold">
+              {{ previousMonthComparison.income.isPositive ? '+' : '' }}{{ previousMonthComparison.income.change.toFixed(1) }}%
+            </span>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500">Mes anterior: {{ formatCurrency(previousMonthComparison.income.previous) }}</p>
+      </div>
+      
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Gastos</p>
+            <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {{ formatCurrency(previousMonthComparison.expenses.current) }}
+            </p>
+          </div>
+          <div 
+            class="flex items-center gap-1 px-3 py-1.5 rounded-lg"
+            :class="previousMonthComparison.expenses.isPositive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'"
+          >
+            <ArrowTrendingUpIcon v-if="previousMonthComparison.expenses.isPositive" class="w-4 h-4" />
+            <ArrowTrendingDownIcon v-else class="w-4 h-4" />
+            <span class="text-sm font-semibold">
+              {{ previousMonthComparison.expenses.isPositive ? '+' : '' }}{{ previousMonthComparison.expenses.change.toFixed(1) }}%
+            </span>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500">Mes anterior: {{ formatCurrency(previousMonthComparison.expenses.previous) }}</p>
+      </div>
+    </div>
+    
+    <!-- Health Metrics -->
+    <div v-if="!selectedAccount && !selectedCategory" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Tasa de Ahorro</p>
+            <p 
+              class="text-2xl font-bold mt-1"
+              :class="parseFloat(savingsRate) >= 0 ? 'text-emerald-600' : 'text-red-600'"
+            >
+              {{ savingsRate }}%
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <ScaleIcon class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">
+          {{ monthBalance >= 0 ? 'Ahorrando' : 'Gastando más de lo que ingresas' }}
+        </p>
+      </div>
+      
+      <div class="card p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Gastos Hormiga</p>
+            <p class="text-2xl font-bold text-orange-600 mt-1">
+              {{ antExpensesPercentage }}%
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+            <BugAntIcon class="w-6 h-6 text-orange-600 dark:text-orange-400" />
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">del total de gastos</p>
+      </div>
+      
+      <div class="card p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Proyección Anual</p>
+            <p 
+              class="text-2xl font-bold mt-1"
+              :class="monthBalance >= 0 ? 'text-emerald-600' : 'text-red-600'"
+            >
+              {{ formatCurrency(monthBalance * 12) }}
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+            <ArrowTrendingUpIcon class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">Basado en el mes actual</p>
+      </div>
+    </div>
+    
+    <!-- Top 5 Categories -->
+    <div v-if="topCategories.length > 0" class="card p-6">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+          <ChartPieIcon class="w-5 h-5 text-rose-600 dark:text-rose-400" />
+        </div>
+        <div>
+          <h2 class="font-display font-semibold text-slate-900 dark:text-white">Top 5 Categorías</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Categorías con más gastos</p>
+        </div>
+      </div>
+      <div class="space-y-3">
+        <div 
+          v-for="(cat, index) in topCategories" 
+          :key="index"
+          class="flex items-center gap-4"
+        >
+          <div class="flex items-center gap-3 flex-1">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm" :style="{ backgroundColor: cat.color }">
+              {{ index + 1 }}
+            </div>
+            <div class="flex-1">
+              <p class="font-medium text-slate-900 dark:text-white">{{ cat.name }}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div 
+                    class="h-full rounded-full transition-all"
+                    :style="{ 
+                      width: `${cat.percentage}%`,
+                      backgroundColor: cat.color
+                    }"
+                  ></div>
+                </div>
+                <span class="text-xs text-slate-500 w-12 text-right">{{ cat.percentage }}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-slate-900 dark:text-white">{{ formatCurrency(cat.total) }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Daily Expenses Chart -->
+    <div v-if="dailyExpensesData && !selectedAccount && !selectedCategory" class="card p-6">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
+          <PresentationChartLineIcon class="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+        </div>
+        <div>
+          <h2 class="font-display font-semibold text-slate-900 dark:text-white">Gastos Diarios</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Distribución de gastos por día</p>
+        </div>
+      </div>
+      <BarChart 
+        :labels="dailyExpensesData.labels"
+        :data="dailyExpensesData.data"
+        :height="250"
+      />
     </div>
     
     <!-- Main Grid -->

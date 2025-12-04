@@ -17,25 +17,56 @@ export const useCategoriesStore = defineStore('categories', () => {
   
   async function fetchCategories() {
     loading.value = true
+    error.value = null
     try {
       const response = await api.get('/categories/')
-      categories.value = response.data.results || response.data
+      const data = response.data.results || response.data
+      const categoriesArray = Array.isArray(data) ? data : []
+      
+      categories.value = categoriesArray
     } catch (err) {
       error.value = 'Error al cargar categorías'
+      console.error('Error fetching categories:', err)
     } finally {
       loading.value = false
     }
   }
   
   async function createCategory(data) {
+    console.log('createCategory llamado con datos:', data)
     loading.value = true
+    error.value = null
     try {
+      if (!data.category_type || !['ingreso', 'gasto'].includes(data.category_type)) {
+        console.error('Tipo de categoría inválido en createCategory:', data.category_type)
+        throw new Error('El tipo de categoría es requerido y debe ser "ingreso" o "gasto"')
+      }
+      
+      console.log('Enviando POST a /categories/', data)
       const response = await api.post('/categories/', data)
-      categories.value.push(response.data)
-      return response.data
+      console.log('Respuesta del servidor:', response.status, response.data)
+      
+      if (response.status >= 200 && response.status < 300) {
+        const newCategory = response.data
+        console.log('Categoría recibida del servidor:', newCategory)
+        
+        await fetchCategories()
+        
+        return newCategory
+      } else {
+        console.error('Status code inesperado:', response.status)
+        throw new Error('Error inesperado al crear la categoría')
+      }
     } catch (err) {
-      error.value = err.response?.data || 'Error al crear categoría'
-      throw err
+      console.error('Error en createCategory:', err)
+      console.error('Error response:', err.response)
+      const errorMessage = err.response?.data 
+        ? (typeof err.response.data === 'string' 
+            ? err.response.data 
+            : err.response.data.detail || JSON.stringify(err.response.data))
+        : err.message || 'Error al crear categoría'
+      error.value = errorMessage
+      throw new Error(errorMessage)
     } finally {
       loading.value = false
     }
@@ -43,16 +74,24 @@ export const useCategoriesStore = defineStore('categories', () => {
   
   async function updateCategory(id, data) {
     loading.value = true
+    error.value = null
     try {
       const response = await api.patch(`/categories/${id}/`, data)
-      const index = categories.value.findIndex(c => c.id === id)
-      if (index !== -1) {
-        categories.value[index] = response.data
+      
+      if (response.status >= 200 && response.status < 300) {
+        await fetchCategories()
+        return response.data
+      } else {
+        throw new Error('Error inesperado al actualizar la categoría')
       }
-      return response.data
     } catch (err) {
-      error.value = err.response?.data || 'Error al actualizar categoría'
-      throw err
+      const errorMessage = err.response?.data 
+        ? (typeof err.response.data === 'string' 
+            ? err.response.data 
+            : err.response.data.detail || JSON.stringify(err.response.data))
+        : err.message || 'Error al actualizar categoría'
+      error.value = errorMessage
+      throw new Error(errorMessage)
     } finally {
       loading.value = false
     }
@@ -62,7 +101,7 @@ export const useCategoriesStore = defineStore('categories', () => {
     loading.value = true
     try {
       await api.delete(`/categories/${id}/`)
-      categories.value = categories.value.filter(c => c.id !== id)
+      await fetchCategories()
     } catch (err) {
       error.value = err.response?.data?.detail || 'Error al eliminar categoría'
       throw err
@@ -93,6 +132,8 @@ export const useCategoriesStore = defineStore('categories', () => {
     getCategoriesByType,
   }
 })
+
+
 
 
 

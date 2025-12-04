@@ -1,10 +1,10 @@
 from django.urls import path
-from .views import DashboardView, ReportsView, ExportView, ImportView
+from . import views
+
+app_name = 'reports'
 
 urlpatterns = [
-    path('dashboard/', DashboardView.as_view(), name='dashboard'),
-    path('exportar/', ExportView.as_view(), name='export'),
-    path('import/', ImportView.as_view(), name='import'),
-    path('', ReportsView.as_view(), name='reports'),
+    path('', views.ReportView.as_view(), name='reports'),
+    path('dashboard/', views.ReportView.as_view(), name='dashboard'),
+    path('by_secondary_category/', views.SecondaryCategoryReportView.as_view(), name='by_secondary_category'),
 ]
-

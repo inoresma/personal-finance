@@ -24,6 +24,14 @@ class AccountBalanceUpdateSerializer(serializers.Serializer):
     initial_balance = serializers.DecimalField(max_digits=15, decimal_places=2)
 
 
+class AccountAdjustBalanceSerializer(serializers.Serializer):
+    new_balance = serializers.DecimalField(max_digits=15, decimal_places=2, required=True)
+    description = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+
+
+
+
 
 
 

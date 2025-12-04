@@ -15,12 +15,19 @@ const uiStore = useUiStore()
 const showModal = ref(false)
 const showDeleteModal = ref(false)
 const showDetailModal = ref(false)
+const showAdjustModal = ref(false)
 const selectedAccount = ref(null)
 const editingAccount = ref(null)
 const accountToDelete = ref(null)
+const accountToAdjust = ref(null)
 const loading = ref(false)
 const accountDetails = ref(null)
 const loadingDetails = ref(false)
+const adjustingBalance = ref(false)
+const adjustmentForm = ref({
+  newBalance: '',
+  description: ''
+})
 
 const form = ref({
   name: '',
@@ -134,6 +141,43 @@ function formatCurrency(value) {
   return formatMoney(value)
 }
 
+function openAdjustBalance(account) {
+  accountToAdjust.value = account
+  adjustmentForm.value = {
+    newBalance: account.balance.toString(),
+    description: ''
+  }
+  showAdjustModal.value = true
+}
+
+async function handleAdjustBalance() {
+  if (!accountToAdjust.value) return
+  
+  const newBalance = parseFloat(adjustmentForm.value.newBalance)
+  if (isNaN(newBalance)) {
+    uiStore.showError('El balance debe ser un número válido')
+    return
+  }
+  
+  adjustingBalance.value = true
+  
+  try {
+    await accountsStore.adjustBalance(
+      accountToAdjust.value.id,
+      newBalance,
+      adjustmentForm.value.description
+    )
+    uiStore.showSuccess('Balance ajustado correctamente')
+    showAdjustModal.value = false
+    accountToAdjust.value = null
+    adjustmentForm.value = { newBalance: '', description: '' }
+  } catch (error) {
+    uiStore.showError('Error al ajustar el balance')
+  } finally {
+    adjustingBalance.value = false
+  }
+}
+
 async function openAccountDetail(account) {
   selectedAccount.value = account
   loadingDetails.value = true
@@ -191,6 +235,7 @@ onMounted(() => {
         @edit="openEditAccount"
         @delete="confirmDeleteAccount"
         @detail="openAccountDetail"
+        @adjust="openAdjustBalance"
       />
     </div>
     
@@ -306,6 +351,55 @@ onMounted(() => {
         <div class="flex justify-end gap-3">
           <button @click="showDeleteModal = false" class="btn-secondary">Cancelar</button>
           <button @click="deleteAccount" class="btn-danger">Eliminar</button>
+        </div>
+      </template>
+    </Modal>
+    
+    <!-- Adjust Balance Modal -->
+    <Modal v-if="showAdjustModal && accountToAdjust" title="Ajustar Balance" @close="showAdjustModal = false">
+      <div class="space-y-5">
+        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+          <p class="text-sm text-slate-500 dark:text-slate-400">Balance actual</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+            {{ formatCurrency(accountToAdjust.balance) }}
+          </p>
+        </div>
+        
+        <div>
+          <label class="label">Nuevo balance *</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+            <input
+              v-model="adjustmentForm.newBalance"
+              type="number"
+              step="0.01"
+              placeholder="0"
+              class="input pl-10"
+              required
+            />
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Este ajuste no afectará las estadísticas de ingresos y gastos
+          </p>
+        </div>
+        
+        <div>
+          <label class="label">Descripción (opcional)</label>
+          <input
+            v-model="adjustmentForm.description"
+            type="text"
+            placeholder="Ej: Corrección por error en transacción eliminada"
+            class="input"
+          />
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button @click="showAdjustModal = false" class="btn-secondary">Cancelar</button>
+          <button @click="handleAdjustBalance" :disabled="adjustingBalance" class="btn-primary">
+            {{ adjustingBalance ? 'Ajustando...' : 'Ajustar balance' }}
+          </button>
         </div>
       </template>
     </Modal>

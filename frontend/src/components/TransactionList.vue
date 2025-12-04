@@ -1,12 +1,13 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { formatMoney, formatDate as formatDateUtil } from '@/composables/useCurrency'
+import CategoryIcon from './CategoryIcon.vue'
 import {
   ArrowUpIcon,
   ArrowDownIcon,
   ArrowsRightLeftIcon,
 } from '@heroicons/vue/24/solid'
-import { BugAntIcon } from '@heroicons/vue/24/outline'
+import { BugAntIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   transactions: {
@@ -19,7 +20,21 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits(['edit', 'delete', 'select'])
+
+const expandedTransactions = ref(new Set())
+
+function toggleExpand(transactionId) {
+  if (expandedTransactions.value.has(transactionId)) {
+    expandedTransactions.value.delete(transactionId)
+  } else {
+    expandedTransactions.value.add(transactionId)
+  }
+}
+
+function isExpanded(transactionId) {
+  return expandedTransactions.value.has(transactionId)
+}
 
 function formatDate(dateString) {
   return formatDateUtil(dateString)
@@ -54,6 +69,14 @@ function getAmountClass(type) {
     default: return 'text-slate-600 dark:text-slate-400'
   }
 }
+
+function handleTransactionClick(event, transaction) {
+  const target = event.target
+  const isActionButton = target.closest('button') || target.closest('[role="button"]')
+  if (!isActionButton) {
+    emit('select', transaction)
+  }
+}
 </script>
 
 <template>
@@ -65,7 +88,8 @@ function getAmountClass(type) {
     <div 
       v-for="transaction in transactions" 
       :key="transaction.id"
-      class="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+      @click="handleTransactionClick($event, transaction)"
+      class="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
     >
       <!-- Icon -->
       <div 
@@ -87,6 +111,22 @@ function getAmountClass(type) {
             title="Gasto hormiga"
           />
           <span 
+            v-if="transaction.has_items"
+            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 cursor-pointer"
+            @click.stop="toggleExpand(transaction.id)"
+            :title="isExpanded(transaction.id) ? 'Ocultar productos' : 'Ver productos'"
+          >
+            <ChevronDownIcon 
+              v-if="!isExpanded(transaction.id)"
+              class="w-3 h-3 transition-transform"
+            />
+            <ChevronUpIcon 
+              v-else
+              class="w-3 h-3 transition-transform"
+            />
+            {{ transaction.items_count || 0 }} productos
+          </span>
+          <span 
             v-if="transaction.category_name"
             class="hidden sm:inline-flex px-2 py-0.5 text-xs font-medium rounded-full"
             :style="{ backgroundColor: transaction.category_color + '20', color: transaction.category_color }"
@@ -102,6 +142,56 @@ function getAmountClass(type) {
             {{ transaction.account_name }} · {{ formatDate(transaction.date) }}
           </template>
         </p>
+        
+        <!-- Items List (when expanded) -->
+        <div v-if="transaction.has_items && isExpanded(transaction.id)" class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+          <div class="space-y-2">
+            <div 
+              v-for="(item, idx) in transaction.items" 
+              :key="idx"
+              class="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <p class="text-sm font-medium text-slate-900 dark:text-white truncate">
+                    {{ item.name }}
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    {{ item.quantity }}x {{ formatCurrency(item.amount) }}
+                  </p>
+                  <div v-if="item.category_name" class="flex items-center gap-1">
+                    <CategoryIcon 
+                      :icon="item.category_icon || 'otros'"
+                      class="w-3 h-3"
+                      :style="{ color: item.category_color || '#6366F1' }"
+                    />
+                    <span 
+                      class="text-xs font-medium"
+                      :style="{ color: item.category_color || '#6366F1' }"
+                    >
+                      {{ item.category_name }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm font-semibold text-slate-900 dark:text-white ml-3 flex-shrink-0">
+                {{ formatCurrency(item.total || (item.amount * item.quantity)) }}
+              </p>
+            </div>
+          </div>
+          <div class="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-500 dark:text-slate-400">
+                Total de productos: {{ transaction.items.length }}
+              </span>
+              <span class="font-semibold text-slate-900 dark:text-white">
+                {{ formatCurrency(transaction.amount) }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
       
       <!-- Amount -->
@@ -115,10 +205,11 @@ function getAmountClass(type) {
         </p>
       </div>
       
+      
       <!-- Actions (not in compact mode) -->
-      <div v-if="!compact" class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div v-if="!compact" class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
         <button
-          @click="emit('edit', transaction)"
+          @click.stop="emit('edit', transaction)"
           class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +217,7 @@ function getAmountClass(type) {
           </svg>
         </button>
         <button
-          @click="emit('delete', transaction)"
+          @click.stop="emit('delete', transaction)"
           class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -45,6 +45,11 @@ const router = createRouter({
           component: () => import('@/views/CategoriesView.vue')
         },
         {
+          path: 'secondary-categories',
+          name: 'secondary-categories',
+          component: () => import('@/views/SecondaryCategoriesView.vue')
+        },
+        {
           path: 'budgets',
           name: 'budgets',
           component: () => import('@/views/BudgetsView.vue')
@@ -58,6 +63,11 @@ const router = createRouter({
           path: 'debts',
           name: 'debts',
           component: () => import('@/views/DebtsView.vue')
+        },
+        {
+          path: 'bets',
+          name: 'bets',
+          component: () => import('@/views/BetsView.vue')
         },
         {
           path: 'reports',
@@ -97,6 +107,9 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+
+
+
 
 
 

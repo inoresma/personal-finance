@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 export const useTransactionsStore = defineStore('transactions', () => {
@@ -8,26 +8,35 @@ export const useTransactionsStore = defineStore('transactions', () => {
   const error = ref(null)
   const pagination = ref({
     count: 0,
-    next: null,
-    previous: null,
     page: 1,
+    next: null,
+    previous: null
   })
   
   async function fetchTransactions(params = {}) {
     loading.value = true
     try {
       const response = await api.get('/transactions/', { params })
-      transactions.value = response.data.results || response.data
-      if (response.data.count !== undefined) {
+      if (response.data.results) {
+        transactions.value = response.data.results
         pagination.value = {
-          count: response.data.count,
+          count: response.data.count || 0,
+          page: Math.floor((response.data.offset || 0) / (response.data.limit || 20)) + 1,
           next: response.data.next,
-          previous: response.data.previous,
-          page: params.page || 1,
+          previous: response.data.previous
+        }
+      } else {
+        transactions.value = response.data
+        pagination.value = {
+          count: response.data.length,
+          page: 1,
+          next: null,
+          previous: null
         }
       }
     } catch (err) {
       error.value = 'Error al cargar transacciones'
+      throw err
     } finally {
       loading.value = false
     }
@@ -40,6 +49,9 @@ export const useTransactionsStore = defineStore('transactions', () => {
       transactions.value.unshift(response.data)
       return response.data
     } catch (err) {
+      console.error('Error creating transaction:', err)
+      console.error('Request data:', data)
+      console.error('Response data:', err.response?.data)
       error.value = err.response?.data || 'Error al crear transacción'
       throw err
     } finally {
@@ -77,38 +89,17 @@ export const useTransactionsStore = defineStore('transactions', () => {
     }
   }
   
-  async function getRecentTransactions(limit = 5) {
-    try {
-      const response = await api.get('/transactions/recent/', { params: { limit } })
-      return response.data
-    } catch (err) {
-      return []
-    }
+  function getTransactionById(id) {
+    return transactions.value.find(t => t.id === id)
   }
   
-  async function getSummary(dateFrom, dateTo) {
+  async function fetchTransactionDetails(id) {
     try {
-      const params = {}
-      if (dateFrom) params.date_from = dateFrom
-      if (dateTo) params.date_to = dateTo
-      
-      const response = await api.get('/transactions/summary/', { params })
+      const response = await api.get(`/transactions/${id}/`)
       return response.data
     } catch (err) {
-      return { income: 0, expenses: 0, balance: 0 }
-    }
-  }
-  
-  async function getByCategory(dateFrom, dateTo) {
-    try {
-      const params = {}
-      if (dateFrom) params.date_from = dateFrom
-      if (dateTo) params.date_to = dateTo
-      
-      const response = await api.get('/transactions/by_category/', { params })
-      return response.data
-    } catch (err) {
-      return []
+      error.value = err.response?.data || 'Error al cargar detalles de transacción'
+      throw err
     }
   }
   
@@ -121,17 +112,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
     createTransaction,
     updateTransaction,
     deleteTransaction,
-    getRecentTransactions,
-    getSummary,
-    getByCategory,
+    getTransactionById,
+    fetchTransactionDetails,
   }
 })
-
-
-
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from apps.accounts.models import Account
-from apps.categories.models import Category
+from apps.categories.models import Category, SecondaryCategory
 
 
 class Transaction(models.Model):
@@ -9,6 +9,7 @@ class Transaction(models.Model):
         ('ingreso', 'Ingreso'),
         ('gasto', 'Gasto'),
         ('transferencia', 'Transferencia'),
+        ('ajuste', 'Ajuste'),
     ]
     
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions')
@@ -40,9 +41,23 @@ class Transaction(models.Model):
         related_name='transactions',
         verbose_name='Categoría'
     )
+    secondary_categories = models.ManyToManyField(
+        SecondaryCategory,
+        related_name='transactions',
+        blank=True,
+        verbose_name='Categorías Secundarias'
+    )
     
     is_recurring = models.BooleanField(default=False, verbose_name='Es recurrente')
     is_ant_expense = models.BooleanField(default=False, verbose_name='Gasto hormiga')
+    related_bet = models.ForeignKey(
+        'bets.Bet',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transactions',
+        verbose_name='Apuesta relacionada'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -57,15 +72,22 @@ class Transaction(models.Model):
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         old_instance = None
+        needs_balance_update = False
         
         if not is_new:
             old_instance = Transaction.objects.get(pk=self.pk)
+            needs_balance_update = (
+                old_instance.amount != self.amount or
+                old_instance.transaction_type != self.transaction_type or
+                old_instance.account_id != self.account_id or
+                old_instance.destination_account_id != self.destination_account_id
+            )
         
         super().save(*args, **kwargs)
         
         if is_new:
             self._apply_transaction()
-        elif old_instance:
+        elif old_instance and needs_balance_update:
             self._reverse_transaction(old_instance)
             self._apply_transaction()
     
@@ -86,6 +108,9 @@ class Transaction(models.Model):
             if self.destination_account:
                 self.destination_account.balance += self.amount
                 self.destination_account.save()
+        elif self.transaction_type == 'ajuste':
+            self.account.balance = self.amount
+            self.account.save()
     
     def _reverse_transaction(self, instance):
         if instance.transaction_type == 'ingreso':
@@ -100,6 +125,49 @@ class Transaction(models.Model):
             if instance.destination_account:
                 instance.destination_account.balance -= instance.amount
                 instance.destination_account.save()
+        elif instance.transaction_type == 'ajuste':
+            pass
+
+
+class PurchaseItem(models.Model):
+    transaction = models.ForeignKey(
+        Transaction,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name='Transacción'
+    )
+    name = models.CharField(max_length=255, verbose_name='Nombre del producto')
+    amount = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Precio')
+    quantity = models.PositiveIntegerField(default=1, verbose_name='Cantidad')
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_items',
+        verbose_name='Categoría'
+    )
+    secondary_categories = models.ManyToManyField(
+        SecondaryCategory,
+        related_name='purchase_items',
+        blank=True,
+        verbose_name='Categorías Secundarias'
+    )
+    is_ant_expense = models.BooleanField(default=False, verbose_name='Gasto hormiga')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Producto de compra'
+        verbose_name_plural = 'Productos de compra'
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"{self.name} - {self.quantity}x {self.amount}"
+    
+    @property
+    def total(self):
+        return self.amount * self.quantity
 
 
 class RecurringTransaction(models.Model):

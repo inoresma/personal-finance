@@ -30,57 +30,19 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Usuario demo: demo@finanzas.com / demo1234'))
     
     def create_default_categories(self):
-        expense_categories = [
-            {'name': 'Alimentación', 'color': '#EF4444', 'icon': 'shopping-cart'},
-            {'name': 'Transporte', 'color': '#F59E0B', 'icon': 'truck'},
-            {'name': 'Vivienda', 'color': '#8B5CF6', 'icon': 'home'},
-            {'name': 'Servicios', 'color': '#3B82F6', 'icon': 'lightning-bolt'},
-            {'name': 'Salud', 'color': '#10B981', 'icon': 'heart'},
-            {'name': 'Entretenimiento', 'color': '#EC4899', 'icon': 'film'},
-            {'name': 'Educación', 'color': '#6366F1', 'icon': 'academic-cap'},
-            {'name': 'Ropa', 'color': '#14B8A6', 'icon': 'shopping-bag'},
-            {'name': 'Tecnología', 'color': '#64748B', 'icon': 'desktop-computer'},
-            {'name': 'Restaurantes', 'color': '#F97316', 'icon': 'cake'},
-            {'name': 'Suscripciones', 'color': '#A855F7', 'icon': 'credit-card'},
-            {'name': 'Mascotas', 'color': '#84CC16', 'icon': 'sparkles'},
-            {'name': 'Otros gastos', 'color': '#6B7280', 'icon': 'dots-horizontal'},
-        ]
+        Category.objects.filter(is_default=True, user__isnull=True).delete()
         
-        income_categories = [
-            {'name': 'Salario', 'color': '#22C55E', 'icon': 'cash'},
-            {'name': 'Freelance', 'color': '#14B8A6', 'icon': 'briefcase'},
-            {'name': 'Inversiones', 'color': '#3B82F6', 'icon': 'trending-up'},
-            {'name': 'Ventas', 'color': '#F59E0B', 'icon': 'tag'},
-            {'name': 'Regalos', 'color': '#EC4899', 'icon': 'gift'},
-            {'name': 'Reembolsos', 'color': '#8B5CF6', 'icon': 'receipt-refund'},
-            {'name': 'Otros ingresos', 'color': '#6B7280', 'icon': 'plus-circle'},
-        ]
+        alimentacion, _ = Category.objects.get_or_create(
+            name='Alimentación',
+            category_type='gasto',
+            is_default=True,
+            user=None,
+            defaults={
+                'color': '#EF4444',
+                'icon': 'shopping-cart'
+            }
+        )
         
-        for cat_data in expense_categories:
-            Category.objects.get_or_create(
-                name=cat_data['name'],
-                category_type='gasto',
-                is_default=True,
-                user=None,
-                defaults={
-                    'color': cat_data['color'],
-                    'icon': cat_data['icon']
-                }
-            )
-        
-        for cat_data in income_categories:
-            Category.objects.get_or_create(
-                name=cat_data['name'],
-                category_type='ingreso',
-                is_default=True,
-                user=None,
-                defaults={
-                    'color': cat_data['color'],
-                    'icon': cat_data['icon']
-                }
-            )
-        
-        alimentacion = Category.objects.get(name='Alimentación', is_default=True)
         subcats = [
             {'name': 'Supermercado', 'color': '#EF4444', 'icon': 'shopping-cart'},
             {'name': 'Restaurantes', 'color': '#F97316', 'icon': 'cake'},
@@ -98,6 +60,17 @@ class Command(BaseCommand):
                     'icon': sub['icon']
                 }
             )
+        
+        Category.objects.get_or_create(
+            name='Otros ingresos',
+            category_type='ingreso',
+            is_default=True,
+            user=None,
+            defaults={
+                'color': '#6B7280',
+                'icon': 'plus-circle'
+            }
+        )
     
     def create_demo_user(self):
         user, created = User.objects.get_or_create(

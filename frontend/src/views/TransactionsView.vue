@@ -6,6 +6,7 @@ import { useCategoriesStore } from '@/stores/categories'
 import { useUiStore } from '@/stores/ui'
 import TransactionList from '@/components/TransactionList.vue'
 import TransactionModal from '@/components/TransactionModal.vue'
+import TransactionDetailModal from '@/components/TransactionDetailModal.vue'
 import Modal from '@/components/Modal.vue'
 import DateInput from '@/components/DateInput.vue'
 import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, BugAntIcon } from '@heroicons/vue/24/outline'
@@ -19,7 +20,9 @@ const loading = ref(false)
 const showFilters = ref(false)
 const showModal = ref(false)
 const showDeleteModal = ref(false)
+const showDetailModal = ref(false)
 const selectedTransaction = ref(null)
+const selectedTransactionForDetail = ref(null)
 const transactionToDelete = ref(null)
 
 const filters = ref({
@@ -60,6 +63,30 @@ function handleEdit(transaction) {
 function handleDelete(transaction) {
   transactionToDelete.value = transaction
   showDeleteModal.value = true
+}
+
+async function handleSelect(transaction) {
+  try {
+    loading.value = true
+    const response = await transactionsStore.fetchTransactionDetails(transaction.id)
+    selectedTransactionForDetail.value = response
+    showDetailModal.value = true
+  } catch (error) {
+    uiStore.showError('Error al cargar los detalles de la transacción')
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleDetailEdit(transaction) {
+  selectedTransaction.value = transaction
+  showDetailModal.value = false
+  showModal.value = true
+}
+
+function handleDetailDelete(transaction) {
+  handleDelete(transaction)
+  showDetailModal.value = false
 }
 
 async function confirmDelete() {
@@ -228,6 +255,7 @@ onMounted(async () => {
         :transactions="transactions"
         @edit="handleEdit"
         @delete="handleDelete"
+        @select="handleSelect"
       />
       
       <!-- Pagination -->
@@ -258,6 +286,15 @@ onMounted(async () => {
       :transaction="selectedTransaction"
       @close="showModal = false; selectedTransaction = null"
       @saved="fetchData"
+    />
+    
+    <!-- Transaction Detail Modal -->
+    <TransactionDetailModal
+      v-if="showDetailModal && selectedTransactionForDetail"
+      :transaction="selectedTransactionForDetail"
+      @close="showDetailModal = false; selectedTransactionForDetail = null"
+      @edit="handleDetailEdit"
+      @delete="handleDetailDelete"
     />
     
     <!-- Delete Confirmation -->

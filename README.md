@@ -1,225 +1,129 @@
-# Finanzas Personales
+# Personal Finance App
 
-Aplicación web completa para administrar finanzas personales con sistema de cuentas de usuario independientes.
+Aplicación de gestión de finanzas personales construida con Django (backend) y Vue.js (frontend).
 
-## Stack Tecnológico
+## 🚀 Inicio Rápido
 
-- **Frontend**: Vue.js 3 (Composition API) + Tailwind CSS
-- **Backend**: Django + Django REST Framework
-- **Base de datos**: PostgreSQL
-- **Autenticación**: JWT (JSON Web Tokens)
+### Requisitos Previos
 
-## Características
+- Docker y Docker Compose instalados
+- Git
 
-- ✅ Gestión de múltiples cuentas financieras
-- ✅ Registro de ingresos, gastos y transferencias
-- ✅ Categorías personalizables
-- ✅ Presupuestos con alertas
-- ✅ Seguimiento de inversiones
-- ✅ Gestión de deudas y préstamos
-- ✅ Transacciones recurrentes
-- ✅ Reportes y gráficos
-- ✅ Exportación de datos (CSV, Excel)
-- ✅ Modo claro/oscuro
-- ✅ Diseño responsive
+### Instalación y Ejecución
 
-## Requisitos
+1. **Clonar el repositorio** (si aún no lo has hecho):
+   ```bash
+   git clone <tu-repositorio>
+   cd personal-finance
+   ```
 
-- Docker y Docker Compose
-- O alternativamente:
-  - Python 3.11+
-  - Node.js 20+
-  - PostgreSQL 15+
+2. **Iniciar la aplicación con Docker Compose**:
+   ```bash
+   docker-compose up --build
+   ```
 
-## Instalación con Docker (Recomendado)
+3. **Acceder a la aplicación**:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Docs (Swagger): http://localhost:8000/api/docs/
+   - Admin Django: http://localhost:8000/admin/
 
+### Comandos Útiles
+
+**Iniciar en segundo plano:**
 ```bash
-# Clonar el repositorio
-git clone <repo-url>
-cd personal-finance
-
-# Iniciar los servicios
 docker-compose up -d
-
-# La aplicación estará disponible en:
-# - Frontend: http://localhost:3000
-# - Backend API: http://localhost:8000
-# - API Docs: http://localhost:8000/api/docs/
 ```
 
-## Instalación Manual
-
-### Backend
-
+**Ver logs:**
 ```bash
-cd backend
-
-# Crear entorno virtual
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# o
-.\venv\Scripts\activate  # Windows
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus configuraciones
-
-# Ejecutar migraciones
-python manage.py migrate
-
-# Crear datos de prueba
-python manage.py seed_data
-
-# Iniciar servidor
-python manage.py runserver
+docker-compose logs -f
 ```
 
-### Frontend
-
+**Detener la aplicación:**
 ```bash
-cd frontend
-
-# Instalar dependencias
-npm install
-
-# Configurar variables de entorno
-# Crear archivo .env con:
-# VITE_API_URL=http://localhost:8000/api
-
-# Iniciar servidor de desarrollo
-npm run dev
+docker-compose down
 ```
 
-## Usuario Demo
-
-Después de ejecutar `seed_data`:
-
-- **Email**: demo@finanzas.com
-- **Contraseña**: demo1234
-
-## Estructura del Proyecto
-
-```
-personal-finance/
-├── backend/
-│   ├── apps/
-│   │   ├── users/          # Autenticación y usuarios
-│   │   ├── accounts/       # Cuentas financieras
-│   │   ├── categories/     # Categorías
-│   │   ├── transactions/   # Transacciones
-│   │   ├── budgets/        # Presupuestos
-│   │   ├── investments/    # Inversiones
-│   │   ├── debts/          # Deudas
-│   │   └── reports/        # Dashboard y reportes
-│   ├── config/             # Configuración Django
-│   ├── requirements.txt
-│   └── manage.py
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # Componentes Vue
-│   │   ├── views/          # Páginas
-│   │   ├── stores/         # Pinia stores
-│   │   ├── services/       # API calls
-│   │   └── router/         # Vue Router
-│   └── package.json
-├── docker-compose.yml
-└── README.md
-```
-
-## API Endpoints
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/api/auth/register/` | Registro de usuario |
-| POST | `/api/auth/login/` | Iniciar sesión |
-| GET | `/api/accounts/` | Listar cuentas |
-| GET | `/api/transactions/` | Listar transacciones |
-| GET | `/api/categories/` | Listar categorías |
-| GET | `/api/budgets/` | Listar presupuestos |
-| GET | `/api/investments/` | Listar inversiones |
-| GET | `/api/debts/` | Listar deudas |
-| GET | `/api/reports/dashboard/` | Dashboard |
-| GET | `/api/reports/` | Reportes |
-| GET | `/api/reports/export/` | Exportar datos |
-
-Ver documentación completa en `/api/docs/`
-
-## Transacciones Recurrentes
-
-Para procesar transacciones recurrentes automáticamente, ejecutar:
-
+**Detener y eliminar volúmenes (incluyendo la base de datos):**
 ```bash
-python manage.py process_recurring
+docker-compose down -v
 ```
 
-Se recomienda configurar un cron job para ejecutar diariamente:
-
+**Reconstruir contenedores:**
 ```bash
-0 1 * * * cd /path/to/backend && python manage.py process_recurring
+docker-compose up --build
 ```
 
-## Desarrollo
-
-### Backend
-
+**Ejecutar migraciones manualmente:**
 ```bash
-# Ejecutar tests
-python manage.py test
-
-# Crear nuevas migraciones
-python manage.py makemigrations
-
-# Aplicar migraciones
-python manage.py migrate
+docker-compose exec backend python manage.py migrate
 ```
 
-### Frontend
-
+**Crear superusuario:**
 ```bash
-# Desarrollo
-npm run dev
-
-# Build producción
-npm run build
-
-# Preview build
-npm run preview
+docker-compose exec backend python manage.py createsuperuser
 ```
 
-## Variables de Entorno
+## 🔧 Configuración
 
-### Backend (.env)
+### Variables de Entorno
 
-```env
-SECRET_KEY=your-secret-key
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-DB_NAME=finance_db
-DB_USER=finance_user
-DB_PASSWORD=finance_pass
-DB_HOST=localhost
-DB_PORT=5432
-CORS_ALLOWED_ORIGINS=http://localhost:3000
+El `docker-compose.yml` ya incluye las variables de entorno necesarias. Si necesitas modificarlas, edita el archivo `docker-compose.yml`.
+
+**Backend:**
+- `DEBUG=True` - Modo desarrollo
+- `SECRET_KEY` - Clave secreta de Django
+- `DB_*` - Configuración de base de datos
+
+**Frontend:**
+- `VITE_API_URL=http://localhost:8000/api` - URL del API
+
+## 🗄️ Base de Datos
+
+La base de datos PostgreSQL se crea automáticamente al iniciar los contenedores. Los datos se persisten en un volumen de Docker llamado `postgres_data`.
+
+**Credenciales por defecto:**
+- Database: `finance_db`
+- User: `finance_user`
+- Password: `finance_pass`
+- Port: `5432`
+
+## 🛠️ Desarrollo
+
+**Comandos útiles Backend:**
+```bash
+# Migraciones
+docker-compose exec backend python manage.py migrate
+
+# Crear migraciones
+docker-compose exec backend python manage.py makemigrations
+
+# Shell de Django
+docker-compose exec backend python manage.py shell
+
+# Crear superusuario
+docker-compose exec backend python manage.py createsuperuser
+```
+**Comandos útiles Frontend:**
+```bash
+# Instalar dependencias (si cambias package.json)
+docker-compose exec frontend npm install
+
+# Build de producción
+docker-compose exec frontend npm run build
 ```
 
-### Frontend (.env)
+## 🐛 Solución de Problemas
 
-```env
-VITE_API_URL=http://localhost:8000/api
-```
+**Error de conexión a la base de datos:**
+- Asegúrate de que el contenedor `db` esté corriendo: `docker-compose ps`
+- Verifica los logs: `docker-compose logs db`
 
-## Licencia
+**El frontend no se conecta al backend:**
+- Verifica que `VITE_API_URL` en `docker-compose.yml` sea `http://localhost:8000/api`
+- Verifica que el backend esté corriendo: `docker-compose ps`
 
-MIT
-
-
-
-
-
-
-
-
-
+**Problemas con permisos:**
+- En Linux/Mac, puede ser necesario ajustar permisos de archivos
+- En Windows, asegúrate de que Docker Desktop tenga acceso a los archivos

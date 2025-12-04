@@ -30,3 +30,8 @@ class InvestmentSerializer(serializers.ModelSerializer):
 
 
 
+
+
+
+
+

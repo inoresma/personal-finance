@@ -19,6 +19,7 @@ import {
   MoonIcon,
   SunIcon,
   PlusIcon,
+  SparklesIcon,
 } from '@heroicons/vue/24/outline'
 import TransactionModal from '@/components/TransactionModal.vue'
 import NotificationCenter from '@/components/NotificationCenter.vue'
@@ -35,9 +36,11 @@ const navigation = [
   { name: 'Transacciones', href: '/transactions', icon: BanknotesIcon },
   { name: 'Cuentas', href: '/accounts', icon: CreditCardIcon },
   { name: 'Categorías', href: '/categories', icon: TagIcon },
+  { name: 'Categorías Secundarias', href: '/secondary-categories', icon: TagIcon },
   { name: 'Presupuestos', href: '/budgets', icon: ChartBarIcon },
   { name: 'Inversiones', href: '/investments', icon: PresentationChartLineIcon },
   { name: 'Deudas', href: '/debts', icon: ScaleIcon },
+  { name: 'Apuestas', href: '/bets', icon: SparklesIcon },
   { name: 'Recurrentes', href: '/recurring', icon: ArrowPathIcon },
   { name: 'Reportes', href: '/reports', icon: ChartBarIcon },
 ]

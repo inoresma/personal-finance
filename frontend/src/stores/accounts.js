@@ -89,6 +89,26 @@ export const useAccountsStore = defineStore('accounts', () => {
     }
   }
   
+  async function adjustBalance(id, newBalance, description = '') {
+    loading.value = true
+    try {
+      const response = await api.post(`/accounts/${id}/adjust_balance/`, {
+        new_balance: newBalance,
+        description: description
+      })
+      const index = accounts.value.findIndex(a => a.id === id)
+      if (index !== -1) {
+        accounts.value[index] = response.data.account
+      }
+      return response.data
+    } catch (err) {
+      error.value = err.response?.data || 'Error al ajustar balance'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+  
   function getAccountById(id) {
     return accounts.value.find(a => a.id === id)
   }
@@ -104,9 +124,13 @@ export const useAccountsStore = defineStore('accounts', () => {
     updateAccount,
     deleteAccount,
     setInitialBalance,
+    adjustBalance,
     getAccountById,
   }
 })
+
+
+
 
 
 
