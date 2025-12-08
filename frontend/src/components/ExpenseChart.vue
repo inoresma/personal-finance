@@ -9,6 +9,7 @@ import {
 } from 'chart.js'
 import { formatMoney } from '@/composables/useCurrency'
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
+import CategoryDetailModal from './CategoryDetailModal.vue'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -20,9 +21,17 @@ const props = defineProps({
 })
 
 const expandedCategories = ref(new Set())
+const selectedCategory = ref(null)
+const showDetailModal = ref(false)
 
 const groupedData = computed(() => {
-  if (!props.data || props.data.length === 0) return []
+  if (!props.data || props.data.length === 0) {
+    console.log('ExpenseChart: No data provided')
+    return []
+  }
+  
+  console.log(`ExpenseChart: Processing ${props.data.length} categories from backend`)
+  console.log('ExpenseChart: Raw data:', props.data.map(d => ({ id: d.category__id, name: d.category__name, total: d.total })))
   
   const groups = new Map()
   
@@ -74,7 +83,33 @@ const groupedData = computed(() => {
     }
   })
   
-  return Array.from(groups.values()).sort((a, b) => b.total - a.total)
+  let result = Array.from(groups.values()).sort((a, b) => b.total - a.total)
+  console.log(`ExpenseChart: Grouped into ${result.length} categories:`, result.map(c => ({ id: c.id, name: c.name, total: c.total })))
+  
+  if (result.length > 5) {
+    const top5 = result.slice(0, 5)
+    const others = result.slice(5)
+    const othersTotal = others.reduce((sum, cat) => sum + cat.total, 0)
+    
+    if (othersTotal > 0) {
+      top5.push({
+        id: 'others',
+        name: 'Otros',
+        color: '#94a3b8',
+        total: othersTotal,
+        subcategories: [],
+        isOthers: true,
+        originalCategories: others
+      })
+    }
+    
+    console.log(`ExpenseChart: Limited to 5 categories + Others (${others.length} categories grouped)`)
+    result = top5
+  }
+  
+  console.log(`ExpenseChart: Final categories for chart: ${result.length}`, result.map(c => ({ id: c.id, name: c.name, total: c.total })))
+  
+  return result
 })
 
 const chartData = computed(() => {
@@ -127,6 +162,9 @@ const chartOptions = computed(() => ({
         afterLabel: function(context) {
           const index = context.dataIndex
           const category = groupedData.value[index]
+          if (category?.isOthers && category?.originalCategories) {
+            return `(${category.originalCategories.length} categorías)`
+          }
           if (category?.subcategories?.length > 0) {
             return `(${category.subcategories.length} subcategorías)`
           }
@@ -134,6 +172,18 @@ const chartOptions = computed(() => ({
         }
       }
     }
+  },
+  onClick: (event, elements) => {
+    if (elements.length > 0) {
+      const index = elements[0].index
+      const category = groupedData.value[index]
+      if (category && !category.isOthers) {
+        openCategoryDetail(category)
+      }
+    }
+  },
+  onHover: (event, elements) => {
+    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default'
   }
 }))
 
@@ -165,6 +215,16 @@ function getPercentage(value) {
   if (total.value === 0) return 0
   return ((value / total.value) * 100).toFixed(1)
 }
+
+function openCategoryDetail(category) {
+  selectedCategory.value = category
+  showDetailModal.value = true
+}
+
+function closeDetailModal() {
+  showDetailModal.value = false
+  selectedCategory.value = null
+}
 </script>
 
 <template>
@@ -181,19 +241,19 @@ function getPercentage(value) {
     <!-- Legend -->
     <div class="flex-1 space-y-1 max-h-64 overflow-y-auto pr-1">
       <template v-for="category in groupedData" :key="category.id">
-        <!-- Parent Category -->
+          <!-- Parent Category -->
         <div 
           class="flex items-center gap-2 p-2 rounded-lg transition-colors"
           :class="[
-            hasSubcategories(category) 
+            (hasSubcategories(category) || category.isOthers)
               ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800' 
-              : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+              : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50'
           ]"
-          @click="hasSubcategories(category) && toggleCategory(category.id)"
+          @click="category.isOthers ? toggleCategory(category.id) : openCategoryDetail(category)"
         >
           <!-- Expand/Collapse Icon -->
           <div class="w-5 h-5 flex items-center justify-center flex-shrink-0">
-            <template v-if="hasSubcategories(category)">
+            <template v-if="hasSubcategories(category) || category.isOthers">
               <ChevronDownIcon 
                 v-if="isExpanded(category.id)" 
                 class="w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform" 
@@ -223,6 +283,14 @@ function getPercentage(value) {
           >
             {{ category.subcategories.length }}
           </span>
+          <!-- Others Count Badge -->
+          <span 
+            v-if="category.isOthers && category.originalCategories"
+            class="text-xs px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+            :title="`Incluye: ${category.originalCategories.map(c => c.name).join(', ')}`"
+          >
+            {{ category.originalCategories.length }}
+          </span>
           
           <!-- Percentage -->
           <span class="text-xs text-slate-400 dark:text-slate-500 w-10 text-right">
@@ -243,7 +311,8 @@ function getPercentage(value) {
           <div 
             v-for="sub in category.subcategories" 
             :key="sub.id"
-            class="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+            class="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+            @click="openCategoryDetail({ ...sub, name: `${category.name} > ${sub.name}` })"
           >
             <!-- Color Indicator (smaller) -->
             <div 
@@ -270,6 +339,42 @@ function getPercentage(value) {
             </span>
           </div>
         </div>
+        
+        <!-- Others Categories (Expanded) -->
+        <div 
+          v-if="category.isOthers && isExpanded(category.id) && category.originalCategories"
+          class="ml-5 pl-2 border-l-2 border-slate-200 dark:border-slate-700 space-y-0.5"
+        >
+          <div 
+            v-for="otherCat in category.originalCategories" 
+            :key="otherCat.id"
+            class="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+          >
+            <!-- Color Indicator (smaller) -->
+            <div 
+              class="w-2 h-2 rounded-full flex-shrink-0"
+              :style="{ backgroundColor: otherCat.color }"
+            />
+            
+            <!-- Name -->
+            <span 
+              class="flex-1 text-sm text-slate-600 dark:text-slate-400 truncate"
+              :title="otherCat.name"
+            >
+              {{ otherCat.name }}
+            </span>
+            
+            <!-- Percentage of total -->
+            <span class="text-xs text-slate-400 dark:text-slate-500 w-10 text-right">
+              {{ getPercentage(otherCat.total) }}%
+            </span>
+            
+            <!-- Amount -->
+            <span class="text-sm text-slate-600 dark:text-slate-400 min-w-[80px] text-right">
+              {{ formatCurrency(otherCat.total) }}
+            </span>
+          </div>
+        </div>
       </template>
       
       <!-- Empty State -->
@@ -277,5 +382,12 @@ function getPercentage(value) {
         No hay gastos este mes
       </div>
     </div>
+
+    <CategoryDetailModal
+      v-if="selectedCategory"
+      :category="selectedCategory"
+      :show="showDetailModal"
+      @close="closeDetailModal"
+    />
   </div>
 </template>

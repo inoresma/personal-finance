@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -6,10 +7,14 @@ const props = defineProps({
   size: {
     type: String,
     default: 'md'
+  },
+  modelValue: {
+    type: Boolean,
+    default: undefined
   }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['update:modelValue', 'close'])
 
 const sizeClasses = {
   sm: 'max-w-md',
@@ -17,15 +22,29 @@ const sizeClasses = {
   lg: 'max-w-2xl',
   xl: 'max-w-4xl',
 }
+
+const isVisible = computed(() => {
+  if (props.modelValue !== undefined) {
+    return props.modelValue
+  }
+  return true
+})
+
+function close() {
+  if (props.modelValue !== undefined) {
+    emit('update:modelValue', false)
+  }
+  emit('close')
+}
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 overflow-y-auto">
+    <div v-if="isVisible" class="fixed inset-0 z-50 overflow-y-auto">
       <!-- Backdrop -->
       <div 
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-        @click="emit('close')"
+        @click="close"
       />
       
       <!-- Modal -->
@@ -40,7 +59,7 @@ const sizeClasses = {
               {{ title }}
             </h3>
             <button
-              @click="emit('close')"
+              @click="close"
               class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
             >
               <XMarkIcon class="w-5 h-5" />
@@ -61,6 +80,8 @@ const sizeClasses = {
     </div>
   </Teleport>
 </template>
+
+
 
 
 

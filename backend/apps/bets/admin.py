@@ -30,3 +30,6 @@ class BetAdmin(admin.ModelAdmin):
 
 
 
+
+
+

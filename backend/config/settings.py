@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'apps.debts',
     'apps.bets',
     'apps.reports',
+    'apps.goals',
 ]
 
 MIDDLEWARE = [

@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useCategoriesStore } from '@/stores/categories'
+import { useGoalsStore } from '@/stores/goals'
 import api from '@/services/api'
 import { formatMoney } from '@/composables/useCurrency'
 import StatCard from '@/components/StatCard.vue'
@@ -31,10 +32,12 @@ import {
   FunnelIcon,
   BuildingLibraryIcon,
   CalendarIcon,
+  FlagIcon,
 } from '@heroicons/vue/24/outline'
 
 const accountsStore = useAccountsStore()
 const categoriesStore = useCategoriesStore()
+const goalsStore = useGoalsStore()
 
 const dashboardData = ref(null)
 const antExpensesData = ref(null)
@@ -415,9 +418,12 @@ onMounted(async () => {
   dateFrom.value = dates.from
   dateTo.value = dates.to
   
-  await accountsStore.fetchAccounts()
-  await categoriesStore.fetchCategories()
-  await fetchDashboard()
+  await Promise.all([
+    accountsStore.fetchAccounts(),
+    categoriesStore.fetchCategories(),
+    goalsStore.fetchActiveGoals(),
+    fetchDashboard()
+  ])
 })
 </script>
 
@@ -823,6 +829,70 @@ onMounted(async () => {
           </div>
         </div>
         <BudgetAlerts :alerts="dashboardData?.budget_alerts || []" />
+      </div>
+      
+      <!-- Goals Widget -->
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <FlagIcon class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h2 class="font-display font-semibold text-slate-900 dark:text-white">Metas Activas</h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400">Progreso de objetivos</p>
+            </div>
+          </div>
+          <router-link to="/goals" class="text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline">
+            Ver todas
+          </router-link>
+        </div>
+        <div v-if="goalsStore.loading" class="text-center py-8">
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+        </div>
+        <div v-else-if="goalsStore.activeGoals.length === 0" class="text-center py-8 text-slate-500 dark:text-slate-400">
+          <p class="text-sm">No hay metas activas</p>
+          <router-link to="/goals" class="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-2 inline-block">
+            Crear una meta
+          </router-link>
+        </div>
+        <div v-else class="space-y-4">
+          <div
+            v-for="goal in goalsStore.activeGoals.slice(0, 3)"
+            :key="goal.id"
+            class="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            @click="$router.push('/goals')"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-medium text-slate-900 dark:text-white text-sm truncate">
+                {{ goal.name }}
+              </h3>
+              <span class="text-xs font-semibold" :class="goal.is_completed ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'">
+                {{ goal.progress_percentage.toFixed(0) }}%
+              </span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+              <div
+                class="h-full transition-all duration-500 ease-out rounded-full"
+                :class="goal.is_completed ? 'bg-emerald-500' : goal.progress_percentage >= 75 ? 'bg-emerald-500' : goal.progress_percentage >= 50 ? 'bg-amber-500' : 'bg-red-500'"
+                :style="{ width: `${Math.min(100, goal.progress_percentage)}%` }"
+              />
+            </div>
+            <div class="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
+              <span>{{ formatCurrency(goal.current_amount) }} / {{ formatCurrency(goal.target_amount) }}</span>
+              <span v-if="goal.days_remaining > 0">{{ goal.days_remaining }} días restantes</span>
+              <span v-else-if="!goal.is_completed" class="text-red-600 dark:text-red-400">Vencida</span>
+              <span v-else class="text-emerald-600 dark:text-emerald-400">Completada</span>
+            </div>
+          </div>
+          <router-link
+            v-if="goalsStore.activeGoals.length > 3"
+            to="/goals"
+            class="block text-center text-sm text-primary-600 dark:text-primary-400 hover:underline pt-2"
+          >
+            Ver {{ goalsStore.activeGoals.length - 3 }} más
+          </router-link>
+        </div>
       </div>
     </div>
     

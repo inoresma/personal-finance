@@ -1,3 +1,4 @@
+import logging
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from apps.categories.models import Category
@@ -8,6 +9,7 @@ from decimal import Decimal
 import random
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -30,9 +32,16 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Usuario demo: demo@finanzas.com / demo1234'))
     
     def create_default_categories(self):
-        Category.objects.filter(is_default=True, user__isnull=True).delete()
+        logger.info('Creating default categories (preserving existing ones)...')
         
-        alimentacion, _ = Category.objects.get_or_create(
+        existing_default_categories = Category.objects.filter(is_default=True, user__isnull=True)
+        existing_default_count = existing_default_categories.count()
+        logger.info(f'Found {existing_default_count} existing default categories')
+        
+        if existing_default_count > 0:
+            logger.info(f'Existing default category IDs: {list(existing_default_categories.values_list("id", "name"))}')
+        
+        alimentacion, created = Category.objects.get_or_create(
             name='Alimentación',
             category_type='gasto',
             is_default=True,
@@ -42,6 +51,13 @@ class Command(BaseCommand):
                 'icon': 'shopping-cart'
             }
         )
+        if created:
+            logger.info(f'Created default category: Alimentación (id={alimentacion.id})')
+        else:
+            logger.info(f'Using existing default category: Alimentación (id={alimentacion.id})')
+            
+            transactions_count = Transaction.objects.filter(category=alimentacion).count()
+            logger.info(f'Category "Alimentación" (id={alimentacion.id}) is referenced by {transactions_count} transactions')
         
         subcats = [
             {'name': 'Supermercado', 'color': '#EF4444', 'icon': 'shopping-cart'},
@@ -49,7 +65,7 @@ class Command(BaseCommand):
             {'name': 'Delivery', 'color': '#FB923C', 'icon': 'truck'},
         ]
         for sub in subcats:
-            Category.objects.get_or_create(
+            subcat, created = Category.objects.get_or_create(
                 name=sub['name'],
                 category_type='gasto',
                 parent=alimentacion,
@@ -60,8 +76,12 @@ class Command(BaseCommand):
                     'icon': sub['icon']
                 }
             )
+            if created:
+                logger.info(f'Created default subcategory: {sub["name"]} (id={subcat.id})')
+            else:
+                logger.debug(f'Using existing default subcategory: {sub["name"]} (id={subcat.id})')
         
-        Category.objects.get_or_create(
+        otros_ingresos, created = Category.objects.get_or_create(
             name='Otros ingresos',
             category_type='ingreso',
             is_default=True,
@@ -71,6 +91,13 @@ class Command(BaseCommand):
                 'icon': 'plus-circle'
             }
         )
+        if created:
+            logger.info(f'Created default category: Otros ingresos (id={otros_ingresos.id})')
+        else:
+            logger.info(f'Using existing default category: Otros ingresos (id={otros_ingresos.id})')
+        
+        final_count = Category.objects.filter(is_default=True, user__isnull=True).count()
+        logger.info(f'Total default categories after seed: {final_count}')
     
     def create_demo_user(self):
         user, created = User.objects.get_or_create(
@@ -137,22 +164,47 @@ class Command(BaseCommand):
         expense_cats = list(Category.objects.filter(category_type='gasto', is_default=True, parent__isnull=True))
         income_cats = list(Category.objects.filter(category_type='ingreso', is_default=True))
         
+        logger.info(f'Found {len(expense_cats)} expense categories and {len(income_cats)} income categories for demo transactions')
+        if expense_cats:
+            logger.debug(f'Expense categories: {[c.name for c in expense_cats]}')
+        if income_cats:
+            logger.debug(f'Income categories: {[c.name for c in income_cats]}')
+        
         today = date.today()
         
         for i in range(3):
             month_start = (today.replace(day=1) - timedelta(days=i*30)).replace(day=1)
             
-            Transaction.objects.get_or_create(
-                user=user,
-                description=f'Salario mes {month_start.month}',
-                transaction_type='ingreso',
-                defaults={
-                    'amount': Decimal('1800000'),
-                    'date': month_start + timedelta(days=random.randint(0, 5)),
-                    'account': accounts[1],
-                    'category': Category.objects.get(name='Salario', is_default=True)
-                }
-            )
+            try:
+                salary_category = Category.objects.get(name='Salario', is_default=True, user__isnull=True)
+                logger.debug(f'Using salary category: {salary_category.name} (id={salary_category.id})')
+                Transaction.objects.get_or_create(
+                    user=user,
+                    description=f'Salario mes {month_start.month}',
+                    transaction_type='ingreso',
+                    defaults={
+                        'amount': Decimal('1800000'),
+                        'date': month_start + timedelta(days=random.randint(0, 5)),
+                        'account': accounts[1],
+                        'category': salary_category
+                    }
+                )
+            except Category.DoesNotExist:
+                logger.warning(f'Category "Salario" not found, skipping salary transaction for month {month_start.month}')
+            except Category.MultipleObjectsReturned:
+                salary_category = Category.objects.filter(name='Salario', is_default=True, user__isnull=True).first()
+                logger.warning(f'Multiple "Salario" categories found, using first one (id={salary_category.id})')
+                Transaction.objects.get_or_create(
+                    user=user,
+                    description=f'Salario mes {month_start.month}',
+                    transaction_type='ingreso',
+                    defaults={
+                        'amount': Decimal('1800000'),
+                        'date': month_start + timedelta(days=random.randint(0, 5)),
+                        'account': accounts[1],
+                        'category': salary_category
+                    }
+                )
         
         expense_descriptions = [
             ('Alimentación', ['Compra supermercado', 'Mercado semanal', 'Frutas y verduras']),
@@ -178,7 +230,9 @@ class Command(BaseCommand):
             trans_date = today - timedelta(days=days_ago)
             
             cat_name, descriptions = random.choice(expense_descriptions)
-            category = next((c for c in expense_cats if c.name == cat_name), random.choice(expense_cats))
+            category = next((c for c in expense_cats if c.name == cat_name and c.is_default and c.user is None), None)
+            if not category:
+                category = random.choice(expense_cats)
             description = random.choice(descriptions)
             
             amount = Decimal(str(random.randint(3000, 85000)))
@@ -198,7 +252,13 @@ class Command(BaseCommand):
             days_ago = random.randint(0, 60)
             trans_date = today - timedelta(days=days_ago)
             description, amount = random.choice(ant_expenses)
-            category = next((c for c in expense_cats if c.name == 'Alimentación'), expense_cats[0])
+            category = next((c for c in expense_cats if c.name == 'Alimentación' and c.is_default and c.user is None), None)
+            if not category:
+                category = expense_cats[0] if expense_cats else None
+                logger.warning(f'Default "Alimentación" category not found, using first available category')
+            if not category:
+                logger.error('No expense categories available for ant expenses')
+                continue
             
             Transaction.objects.create(
                 user=user,

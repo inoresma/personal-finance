@@ -55,6 +55,11 @@ const router = createRouter({
           component: () => import('@/views/BudgetsView.vue')
         },
         {
+          path: 'goals',
+          name: 'goals',
+          component: () => import('@/views/GoalsView.vue')
+        },
+        {
           path: 'investments',
           name: 'investments',
           component: () => import('@/views/InvestmentsView.vue')
@@ -73,6 +78,11 @@ const router = createRouter({
           path: 'reports',
           name: 'reports',
           component: () => import('@/views/ReportsView.vue')
+        },
+        {
+          path: 'habits-analysis',
+          name: 'habits-analysis',
+          component: () => import('@/views/HabitsAnalysisView.vue')
         },
         {
           path: 'recurring',

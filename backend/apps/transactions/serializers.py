@@ -73,6 +73,20 @@ class TransactionSerializer(serializers.ModelSerializer):
                 })
         
         if transaction_type in ['ingreso', 'gasto'] and category:
+            user = self.context['request'].user
+            
+            from apps.categories.models import Category
+            from django.db.models import Q
+            
+            if not Category.objects.filter(
+                Q(id=category.id),
+                Q(user=user) | Q(is_default=True, user__isnull=True)
+            ).exists():
+                logger.warning(f'User {user.id} attempted to use category {category.id} which is not accessible')
+                raise serializers.ValidationError({
+                    'category': 'La categoría seleccionada no existe o no está disponible para tu usuario.'
+                })
+            
             if transaction_type == 'ingreso' and category.category_type != 'ingreso':
                 raise serializers.ValidationError({
                     'category': 'La categoría debe ser de tipo ingreso.'
@@ -81,6 +95,8 @@ class TransactionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'category': 'La categoría debe ser de tipo gasto.'
                 })
+            
+            logger.debug(f'Category validation passed: category_id={category.id}, name={category.name}, type={category.category_type}, user={category.user_id if category.user else None}, is_default={category.is_default}')
         
         if transaction_type == 'ajuste':
             if destination_account:
@@ -136,9 +152,29 @@ class TransactionSerializer(serializers.ModelSerializer):
             validated_data.pop('related_bet', None)
         
         try:
+            category = validated_data.get('category')
+            if category:
+                from apps.categories.models import Category
+                from django.db.models import Q
+                user = self.context['request'].user
+                
+                if not Category.objects.filter(
+                    Q(id=category.id),
+                    Q(user=user) | Q(is_default=True, user__isnull=True)
+                ).exists():
+                    logger.error(f'User {user.id} attempted to create transaction with invalid category {category.id}')
+                    raise serializers.ValidationError({
+                        'category': 'La categoría seleccionada no existe o no está disponible para tu usuario.'
+                    })
+                
+                logger.debug(f'Creating transaction with valid category: {category.id} ({category.name})')
+            
             logger.debug(f'Creating transaction with data: {validated_data}')
             transaction = super().create(validated_data)
             logger.debug(f'Transaction created successfully: {transaction.id}')
+            
+            if transaction.category:
+                logger.info(f'Transaction {transaction.id} created with category {transaction.category.id} ({transaction.category.name})')
         except Exception as e:
             logger.error(f'Error creating transaction: {str(e)}')
             logger.error(traceback.format_exc())
@@ -148,6 +184,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         
         if items_data:
             created_items = 0
+            logger.info(f'Creating transaction with {len(items_data)} items, transaction_type={transaction.transaction_type}')
             for idx, item_data in enumerate(items_data):
                 try:
                     name = item_data.get('name', '').strip()
@@ -170,8 +207,44 @@ class TransactionSerializer(serializers.ModelSerializer):
                     if category_id:
                         try:
                             category_id = int(category_id)
-                        except (ValueError, TypeError):
-                            category_id = None
+                            from apps.categories.models import Category
+                            from django.db.models import Q
+                            
+                            try:
+                                category = Category.objects.get(id=category_id)
+                                
+                                user = self.context['request'].user
+                                if not Category.objects.filter(
+                                    Q(id=category_id),
+                                    Q(user=user) | Q(is_default=True, user__isnull=True)
+                                ).exists():
+                                    logger.warning(f'PurchaseItem {idx}: User {user.id} attempted to use category {category_id} which is not accessible')
+                                    raise serializers.ValidationError({
+                                        'items': f'La categoría seleccionada no existe o no está disponible para tu usuario.'
+                                    })
+                                
+                                logger.debug(f'PurchaseItem {idx}: Validating category {category_id} ({category.name}) type={category.category_type} for transaction_type={transaction.transaction_type}')
+                                if transaction.transaction_type == 'gasto' and category.category_type != 'gasto':
+                                    logger.warning(f'PurchaseItem {idx}: Category {category_id} ({category.name}) is type {category.category_type}, expected "gasto" for expense transaction')
+                                    raise serializers.ValidationError({
+                                        'items': f'La categoría "{category.name}" debe ser de tipo gasto para esta transacción.'
+                                    })
+                                elif transaction.transaction_type == 'ingreso' and category.category_type != 'ingreso':
+                                    logger.warning(f'PurchaseItem {idx}: Category {category_id} ({category.name}) is type {category.category_type}, expected "ingreso" for income transaction')
+                                    raise serializers.ValidationError({
+                                        'items': f'La categoría "{category.name}" debe ser de tipo ingreso para esta transacción.'
+                                    })
+                                logger.debug(f'PurchaseItem {idx}: Category validation passed')
+                            except Category.DoesNotExist:
+                                logger.warning(f'PurchaseItem {idx}: Category {category_id} does not exist')
+                                raise serializers.ValidationError({
+                                    'items': f'La categoría con ID {category_id} no existe.'
+                                })
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f'PurchaseItem {idx}: Invalid category_id format: {category_id}')
+                            raise serializers.ValidationError({
+                                'items': f'ID de categoría inválido: {category_id}'
+                            })
                     else:
                         category_id = None
                     
@@ -183,11 +256,13 @@ class TransactionSerializer(serializers.ModelSerializer):
                         category_id=category_id,
                         is_ant_expense=bool(item_data.get('is_ant_expense', False))
                     )
+                    logger.info(f'Created purchase item: id={purchase_item.id}, name={name}, category_id={category_id}, transaction_id={transaction.id}')
                     
                     secondary_category_ids = item_data.get('secondary_categories', [])
                     if secondary_category_ids:
                         try:
                             purchase_item.secondary_categories.set(secondary_category_ids)
+                            logger.debug(f'PurchaseItem {purchase_item.id}: Set {len(secondary_category_ids)} secondary categories')
                         except Exception as e:
                             logger.warning(f'Error setting secondary categories for item {idx}: {str(e)}')
                     created_items += 1
@@ -237,6 +312,7 @@ class TransactionSerializer(serializers.ModelSerializer):
                 })
             
             instance.items.all().delete()
+            logger.info(f'Updating transaction {instance.id} with {len(items_data)} items, transaction_type={instance.transaction_type}')
             
             created_items = 0
             for idx, item_data in enumerate(items_data):
@@ -262,8 +338,44 @@ class TransactionSerializer(serializers.ModelSerializer):
                     if category_id:
                         try:
                             category_id = int(category_id)
-                        except (ValueError, TypeError):
-                            category_id = None
+                            from apps.categories.models import Category
+                            from django.db.models import Q
+                            
+                            try:
+                                category = Category.objects.get(id=category_id)
+                                
+                                user = self.context['request'].user
+                                if not Category.objects.filter(
+                                    Q(id=category_id),
+                                    Q(user=user) | Q(is_default=True, user__isnull=True)
+                                ).exists():
+                                    logger.warning(f'PurchaseItem {idx}: User {user.id} attempted to use category {category_id} which is not accessible')
+                                    raise serializers.ValidationError({
+                                        'items': f'La categoría seleccionada no existe o no está disponible para tu usuario.'
+                                    })
+                                
+                                logger.debug(f'PurchaseItem {idx}: Validating category {category_id} ({category.name}) type={category.category_type} for transaction_type={instance.transaction_type}')
+                                if instance.transaction_type == 'gasto' and category.category_type != 'gasto':
+                                    logger.warning(f'PurchaseItem {idx}: Category {category_id} ({category.name}) is type {category.category_type}, expected "gasto" for expense transaction')
+                                    raise serializers.ValidationError({
+                                        'items': f'La categoría "{category.name}" debe ser de tipo gasto para esta transacción.'
+                                    })
+                                elif instance.transaction_type == 'ingreso' and category.category_type != 'ingreso':
+                                    logger.warning(f'PurchaseItem {idx}: Category {category_id} ({category.name}) is type {category.category_type}, expected "ingreso" for income transaction')
+                                    raise serializers.ValidationError({
+                                        'items': f'La categoría "{category.name}" debe ser de tipo ingreso para esta transacción.'
+                                    })
+                                logger.debug(f'PurchaseItem {idx}: Category validation passed')
+                            except Category.DoesNotExist:
+                                logger.warning(f'PurchaseItem {idx}: Category {category_id} does not exist')
+                                raise serializers.ValidationError({
+                                    'items': f'La categoría con ID {category_id} no existe.'
+                                })
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f'PurchaseItem {idx}: Invalid category_id format: {category_id}')
+                            raise serializers.ValidationError({
+                                'items': f'ID de categoría inválido: {category_id}'
+                            })
                     else:
                         category_id = None
                     
@@ -275,11 +387,13 @@ class TransactionSerializer(serializers.ModelSerializer):
                         category_id=category_id,
                         is_ant_expense=is_ant_expense
                     )
+                    logger.info(f'Created purchase item: id={purchase_item.id}, name={name}, category_id={category_id}, transaction_id={instance.id}')
                     
                     secondary_category_ids = item_data.get('secondary_categories', [])
                     if secondary_category_ids:
                         try:
                             purchase_item.secondary_categories.set(secondary_category_ids)
+                            logger.debug(f'PurchaseItem {purchase_item.id}: Set {len(secondary_category_ids)} secondary categories')
                         except Exception as e:
                             logger.warning(f'Error setting secondary categories for item {idx}: {str(e)}')
                     created_items += 1
@@ -306,11 +420,35 @@ class TransactionSerializer(serializers.ModelSerializer):
             logger.warning(f'Error handling related_bet field: {str(e)}')
             validated_data.pop('related_bet', None)
         
+        category = validated_data.get('category')
+        if category:
+            from apps.categories.models import Category
+            from django.db.models import Q
+            user = self.context['request'].user
+            
+            if not Category.objects.filter(
+                Q(id=category.id),
+                Q(user=user) | Q(is_default=True, user__isnull=True)
+            ).exists():
+                logger.error(f'User {user.id} attempted to update transaction {instance.id} with invalid category {category.id}')
+                raise serializers.ValidationError({
+                    'category': 'La categoría seleccionada no existe o no está disponible para tu usuario.'
+                })
+            
+            logger.debug(f'Updating transaction {instance.id} with valid category: {category.id} ({category.name})')
+        
         transaction = super().update(instance, validated_data)
+        logger.info(f'Updated transaction: id={transaction.id}, category_id={transaction.category_id}, transaction_type={transaction.transaction_type}')
+        
+        if transaction.category:
+            logger.info(f'Transaction {transaction.id} updated with category {transaction.category.id} ({transaction.category.name})')
+        else:
+            logger.warning(f'Transaction {transaction.id} updated without category')
         
         if secondary_category_ids is not None:
             try:
                 transaction.secondary_categories.set(secondary_category_ids)
+                logger.debug(f'Transaction {transaction.id}: Set {len(secondary_category_ids)} secondary categories')
             except Exception as e:
                 logger.warning(f'Error setting secondary categories: {str(e)}')
         
